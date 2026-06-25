@@ -57,6 +57,26 @@ O card aparece automaticamente, agrupado pela `category`, e já entra na busca.
 | `em-breve`    | card esmaecido, sem link          | em desenvolvimento                   |
 | `manutencao`  | selo de manutenção                | temporariamente fora                 |
 
+### Link secundário (e modal embutido)
+
+Um serviço pode ter um **link secundário** — útil quando o sistema tem uma
+"área de dados" (ex.: a planilha de respostas de um formulário):
+
+```ts
+secondary: {
+  label: 'Ver respostas',
+  href: 'https://docs.google.com/spreadsheets/d/<ID>/edit',     // abre em nova aba
+  embedSrc: 'https://docs.google.com/spreadsheets/d/<ID>/preview', // abre num modal
+  icon: GoogleSheetsIcon,                                        // ícone do botão
+}
+```
+
+- Com `embedSrc`, o botão abre um **modal** com o conteúdo embutido (iframe), e o
+  modal tem um atalho "Abrir no Google Sheets" como alternativa.
+- Sem `embedSrc`, o botão apenas abre o `href` em nova aba.
+- Para a planilha embutir, ela precisa estar compartilhada como **"qualquer
+  pessoa com o link"** (somente leitura já basta).
+
 ### Adicionar uma categoria
 
 No mesmo arquivo, inclua um item em `categories` (com `label`, `description` e

@@ -213,3 +213,22 @@ export function XIcon(props: IconProps) {
     </Icon>
   )
 }
+
+/** Ícone da marca Google Sheets (cores fixas, não usa currentColor). */
+export function GoogleSheetsIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z"
+        fill="#188038"
+      />
+      <path d="M14 2l5 5h-5V2Z" fill="#0b5d2a" />
+      <rect x="8" y="11" width="8" height="7" rx="0.6" fill="#fff" />
+      <path
+        d="M8 13.33h8M8 15.66h8M10.67 11v7M13.33 11v7"
+        stroke="#188038"
+        strokeWidth="0.9"
+      />
+    </svg>
+  )
+}

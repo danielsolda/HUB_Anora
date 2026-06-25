@@ -37,7 +37,12 @@ export type Service = {
   /** Link secundário opcional (ex.: planilha de respostas, área administrativa). */
   secondary?: {
     label: string
+    /** Destino para "abrir em nova aba" (também usado como fallback do modal). */
     href: string
+    /** Se presente, o link abre num modal com este conteúdo embutido (iframe). */
+    embedSrc?: string
+    /** Ícone exibido ao lado do rótulo. */
+    icon?: ComponentType<SVGProps<SVGSVGElement>>
   }
   /** Ícone do card. */
   icon: ComponentType<SVGProps<SVGSVGElement>>

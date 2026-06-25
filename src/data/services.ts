@@ -6,6 +6,7 @@ import {
   ChatIcon,
   ClipboardIcon,
   DashboardIcon,
+  GoogleSheetsIcon,
   HeartPulseIcon,
   MegaphoneIcon,
   StethoscopeIcon,
@@ -136,6 +137,9 @@ export const services: Service[] = [
     secondary: {
       label: 'Ver respostas',
       href: 'https://docs.google.com/spreadsheets/d/1U6_a-W2dZAgWRzwXCNr3KRLbl7ygJrE21S-8LiMncD0/edit',
+      embedSrc:
+        'https://docs.google.com/spreadsheets/d/1U6_a-W2dZAgWRzwXCNr3KRLbl7ygJrE21S-8LiMncD0/preview',
+      icon: GoogleSheetsIcon,
     },
     icon: UserPlusIcon,
     keywords: ['vagas', 'recrutamento', 'rh', 'contratação', 'candidatos', 'equipe'],

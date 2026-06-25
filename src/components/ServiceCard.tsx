@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import type { Service, ServiceStatus } from '../types'
 import { ArrowRightIcon, ExternalLinkIcon } from '../lib/icons'
+import { EmbedModal } from './EmbedModal'
 
 const statusConfig: Record<ServiceStatus, { label: string; className: string }> = {
   ativo: {
@@ -16,6 +18,9 @@ const statusConfig: Record<ServiceStatus, { label: string; className: string }> 
   },
 }
 
+const secondaryChipClass =
+  'relative z-10 mt-4 inline-flex w-fit items-center gap-2 rounded-full border border-ink/15 bg-cream px-3.5 py-2 text-sm font-medium text-ink shadow-sm transition-colors hover:border-terracotta/40 hover:bg-linen/40'
+
 function StatusBadge({ status }: { status: ServiceStatus }) {
   const { label, className } = statusConfig[status]
   return (
@@ -31,6 +36,7 @@ function StatusBadge({ status }: { status: ServiceStatus }) {
 export function ServiceCard({ service }: { service: Service }) {
   const { name, description, status, href, external, secondary, icon: Icon } = service
   const isActive = status === 'ativo' && Boolean(href)
+  const [showEmbed, setShowEmbed] = useState(false)
 
   const baseClass =
     'group relative flex h-full flex-col rounded-xl2 border border-ink/10 bg-cream p-6 shadow-card transition-all duration-300'
@@ -65,8 +71,12 @@ export function ServiceCard({ service }: { service: Service }) {
     )
   }
 
+  const SecondaryIcon = secondary?.icon
+
   return (
-    <article className={`${baseClass} hover:-translate-y-1 hover:border-terracotta/30 hover:shadow-card-hover`}>
+    <article
+      className={`${baseClass} hover:-translate-y-1 hover:border-terracotta/30 hover:shadow-card-hover`}
+    >
       {header}
       {body}
 
@@ -80,20 +90,41 @@ export function ServiceCard({ service }: { service: Service }) {
       </div>
 
       {secondary ? (
-        <a
-          href={secondary.href}
-          target="_blank"
-          rel="noreferrer"
-          className="relative z-10 mt-4 inline-flex items-center gap-1.5 self-start border-t border-ink/10 pt-4 text-sm text-ink/55 transition-colors hover:text-terracotta"
-        >
-          {secondary.label}
-          <ExternalLinkIcon className="h-3.5 w-3.5" />
-        </a>
+        <>
+          <div className="mt-5 border-t border-ink/10" aria-hidden="true" />
+          {secondary.embedSrc ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowEmbed(true)
+              }}
+              className={secondaryChipClass}
+            >
+              {SecondaryIcon ? <SecondaryIcon className="h-4 w-4" /> : null}
+              {secondary.label}
+            </button>
+          ) : (
+            <a
+              href={secondary.href}
+              target="_blank"
+              rel="noreferrer"
+              className={secondaryChipClass}
+            >
+              {SecondaryIcon ? (
+                <SecondaryIcon className="h-4 w-4" />
+              ) : (
+                <ExternalLinkIcon className="h-4 w-4" />
+              )}
+              {secondary.label}
+            </a>
+          )}
+        </>
       ) : null}
 
       {/* Link principal "esticado": cobre todo o card sem aninhar âncoras.
           Vem por último para captar os cliques acima do conteúdo estático;
-          o link secundário (relative z-10) permanece clicável por cima dele. */}
+          o link/botão secundário (relative z-10) permanece clicável por cima. */}
       <a
         href={href}
         target={external ? '_blank' : undefined}
@@ -101,6 +132,15 @@ export function ServiceCard({ service }: { service: Service }) {
         aria-label={`Acessar ${name}`}
         className="absolute inset-0 rounded-xl2"
       />
+
+      {secondary?.embedSrc && showEmbed ? (
+        <EmbedModal
+          title={name}
+          src={secondary.embedSrc}
+          href={secondary.href}
+          onClose={() => setShowEmbed(false)}
+        />
+      ) : null}
     </article>
   )
 }
