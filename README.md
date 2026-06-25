@@ -139,8 +139,9 @@ src/
 ├── views/
 │   ├── HomeView.tsx           # aba Início (central de controle)
 │   ├── ServicesView.tsx       # "Todos", categoria e resultados de busca
-│   ├── CategoryWorkspace.tsx  # Gestão/Análise: 2ª sidebar + módulo (Kanban/dashboard)
+│   ├── CategoryWorkspace.tsx  # Gestão: 2ª sidebar de módulos (Kanban etc.)
 │   ├── VideosView.tsx         # aba Vídeos
+│   ├── FinanceiroView.tsx     # aba Financeiro (dashboard, dono)
 │   └── UsersView.tsx          # aba Usuários (gestão de acessos)
 ├── data/services.ts          # ← registro de serviços e categorias (edite aqui)
 ├── lib/

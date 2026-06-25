@@ -8,7 +8,10 @@ import { HomeView } from './views/HomeView'
 import { ServicesView } from './views/ServicesView'
 import { CategoryWorkspace } from './views/CategoryWorkspace'
 import { VideosView } from './views/VideosView'
+import { FinanceiroView } from './views/FinanceiroView'
 import { UsersView } from './views/UsersView'
+import { DashboardEmbed } from './components/DashboardEmbed'
+import { services } from './data/services'
 import type { Route, ViewId } from './navigation'
 import { readRoute, writeRoute } from './navigation'
 import { useAuth } from './auth/AuthContext'
@@ -86,13 +89,27 @@ function AppShell({ user }: { user: User }) {
     if (searching) return <ServicesView view="todos" query={query} />
     if (route.view === 'inicio') return <HomeView onNavigate={(view) => navigate(view)} />
     if (route.view === 'videos') return <VideosView />
+    if (route.view === 'financeiro') return <FinanceiroView />
     if (route.view === 'usuarios') return <UsersView />
-    if (route.view === 'gestao' || route.view === 'analise') {
+    if (route.view === 'analise') {
+      // Análise abre direto o preview do dashboard (sem 2ª sidebar).
+      const dash = services.find(
+        (s) => s.category === 'analise' && s.status === 'ativo' && s.embedUrl,
+      )
+      return dash?.embedUrl ? (
+        <DashboardEmbed title={dash.name} src={dash.embedUrl} />
+      ) : (
+        <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center text-sm text-ink/50">
+          Nenhum dashboard disponível.
+        </div>
+      )
+    }
+    if (route.view === 'gestao') {
       return (
         <CategoryWorkspace
-          categoryId={route.view}
+          categoryId="gestao"
           activeModule={route.module}
-          onSelectModule={(module) => navigate(route.view, module)}
+          onSelectModule={(module) => navigate('gestao', module)}
         />
       )
     }

@@ -1,7 +1,16 @@
 import { useState, type ComponentType, type SVGProps } from 'react'
 import { AnoraMark } from './AnoraLogo'
 import { ChangePasswordModal } from './ChangePasswordModal'
-import { GridIcon, HomeIcon, KeyIcon, LogoutIcon, UsersIcon, VideoIcon, XIcon } from '../lib/icons'
+import {
+  ChartIcon,
+  GridIcon,
+  HomeIcon,
+  KeyIcon,
+  LogoutIcon,
+  UsersIcon,
+  VideoIcon,
+  XIcon,
+} from '../lib/icons'
 import { categories, services } from '../data/services'
 import type { ViewId } from '../navigation'
 import { useAuth } from '../auth/AuthContext'
@@ -42,6 +51,7 @@ function buildNav(role: Role) {
       icon: c.icon,
       count: visibleServices(c.id),
     })),
+    { id: 'financeiro', label: 'Financeiro', icon: ChartIcon },
   ]
   const admin: NavItem[] = [{ id: 'usuarios', label: 'Usuários', icon: UsersIcon }]
 

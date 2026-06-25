@@ -59,20 +59,10 @@ export const services: Service[] = [
       'Indicadores do funil de atendimento e conversão, a partir dos dados do CRM (Kommo).',
     category: 'analise',
     status: 'ativo',
-    href: '#analise/crm-dashboard',
+    href: '#analise',
     embedUrl: 'https://kommo-dashboard-clinica-anora.lvvvr0.easypanel.host/',
     icon: DashboardIcon,
     keywords: ['crm', 'kommo', 'funil', 'conversão', 'vendas', 'indicadores'],
-  },
-  {
-    id: 'dashboard-financeiro',
-    name: 'Dashboard Financeiro',
-    description:
-      'Faturamento, recebimentos e desempenho por procedimento, organizados para leitura rápida.',
-    category: 'analise',
-    status: 'em-breve',
-    icon: ChartIcon,
-    keywords: ['faturamento', 'receita', 'financeiro', 'desempenho'],
   },
   {
     id: 'agendamento',
