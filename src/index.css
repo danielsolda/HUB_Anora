@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-cream text-ink font-sans antialiased;
+    font-feature-settings: 'ss01';
+  }
+
+  ::selection {
+    @apply bg-terracotta/20 text-ink;
+  }
+
+  /* Foco visível e coerente com a marca. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-terracotta/60 ring-offset-2 ring-offset-cream;
+  }
+}
+
+@layer utilities {
+  /* Fundo da página: creme com um leve degradê de areia no topo. */
+  .bg-anora {
+    background-color: #f7f4e8;
+    background-image:
+      radial-gradient(60rem 32rem at 50% -8rem, rgba(188, 175, 150, 0.45), transparent 70%),
+      radial-gradient(40rem 24rem at 100% 0%, rgba(147, 114, 101, 0.12), transparent 60%);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
