@@ -2,11 +2,18 @@ import { useCallback, useEffect, useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { TopBar } from './components/TopBar'
 import { WelcomeOverlay } from './components/WelcomeOverlay'
+import { LoginScreen } from './components/LoginScreen'
+import { AnoraMark } from './components/AnoraLogo'
 import { HomeView } from './views/HomeView'
 import { ServicesView } from './views/ServicesView'
 import { GestaoWorkspace } from './views/GestaoWorkspace'
+import { VideosView } from './views/VideosView'
+import { UsersView } from './views/UsersView'
 import type { Route, ViewId } from './navigation'
 import { readRoute, writeRoute } from './navigation'
+import { useAuth } from './auth/AuthContext'
+import { canAccessView, defaultView } from './auth/access'
+import type { User } from './auth/api'
 
 function prefersReducedMotion() {
   try {
@@ -16,9 +23,9 @@ function prefersReducedMotion() {
   }
 }
 
-function shouldShowIntro() {
+function shouldShowIntro(role: User['role']) {
   try {
-    if (prefersReducedMotion()) return false
+    if (role === 'vendedor' || prefersReducedMotion()) return false
     const route = readRoute()
     if (route && route.view !== 'inicio') return false
     return sessionStorage.getItem('anora_intro_seen') !== '1'
@@ -27,18 +34,24 @@ function shouldShowIntro() {
   }
 }
 
-export default function App() {
+function Splash() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-anora">
+      <AnoraMark className="h-12 w-12 animate-pulse text-terracotta" title="Clínica Anora" />
+    </div>
+  )
+}
+
+function AppShell({ user }: { user: User }) {
   const [route, setRoute] = useState<Route>(() => readRoute() ?? { view: 'inicio', module: null })
   const [query, setQuery] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [showIntro, setShowIntro] = useState(shouldShowIntro)
+  const [showIntro, setShowIntro] = useState(() => shouldShowIntro(user.role))
 
-  // Mantém a URL (hash) em sincronia com a rota atual.
   useEffect(() => {
     writeRoute(route)
   }, [route])
 
-  // Acompanha mudanças externas do hash (links internos, voltar, etc.).
   useEffect(() => {
     const onHashChange = () => {
       const next = readRoute()
@@ -59,15 +72,21 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
+  // Redireciona se o papel não pode acessar a aba atual.
+  useEffect(() => {
+    if (!canAccessView(user.role, route.view)) {
+      navigate(defaultView(user.role))
+    }
+  }, [user.role, route.view, navigate])
+
   const searching = query.trim().length > 0
 
   function renderMain() {
-    if (searching) {
-      return <ServicesView view="todos" query={query} />
-    }
-    if (route.view === 'inicio') {
-      return <HomeView onNavigate={(view) => navigate(view)} />
-    }
+    if (!canAccessView(user.role, route.view)) return null
+    if (searching) return <ServicesView view="todos" query={query} />
+    if (route.view === 'inicio') return <HomeView onNavigate={(view) => navigate(view)} />
+    if (route.view === 'videos') return <VideosView />
+    if (route.view === 'usuarios') return <UsersView />
     if (route.view === 'gestao') {
       return (
         <GestaoWorkspace
@@ -94,6 +113,7 @@ export default function App() {
           query={query}
           onQuery={setQuery}
           onOpenMenu={() => setSidebarOpen(true)}
+          showSearch={user.role !== 'vendedor'}
         />
 
         <main className="flex-1">{renderMain()}</main>
@@ -102,4 +122,12 @@ export default function App() {
       {showIntro ? <WelcomeOverlay onDone={() => setShowIntro(false)} /> : null}
     </div>
   )
+}
+
+export default function App() {
+  const { status, user } = useAuth()
+
+  if (status === 'loading') return <Splash />
+  if (status === 'anon' || !user) return <LoginScreen />
+  return <AppShell user={user} />
 }

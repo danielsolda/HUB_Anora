@@ -3,6 +3,8 @@ import { ServiceCard } from '../components/ServiceCard'
 import { categories, services } from '../data/services'
 import type { Category, Service } from '../types'
 import type { ViewId } from '../navigation'
+import { useAuth } from '../auth/AuthContext'
+import { canSeeService } from '../auth/access'
 
 function normalize(text: string) {
   return text
@@ -40,18 +42,24 @@ type ServicesViewProps = {
 }
 
 export function ServicesView({ view, query }: ServicesViewProps) {
+  const { user } = useAuth()
   const q = query.trim()
   const searching = q.length > 0
 
+  const base = useMemo(
+    () => services.filter((s) => !user || canSeeService(user.role, s.id)),
+    [user],
+  )
+
   const filtered = useMemo(() => {
-    if (!searching) return services
+    if (!searching) return base
     const needle = normalize(q)
-    return services.filter((service) =>
+    return base.filter((service) =>
       normalize(
         [service.name, service.description, ...(service.keywords ?? [])].join(' '),
       ).includes(needle),
     )
-  }, [q, searching])
+  }, [q, searching, base])
 
   // ── Modo busca: resultados de todas as categorias ──
   if (searching) {
@@ -90,7 +98,7 @@ export function ServicesView({ view, query }: ServicesViewProps) {
   if (view !== 'todos') {
     const category = categories.find((c) => c.id === view)
     if (!category) return null
-    const items = services.filter((s) => s.category === view)
+    const items = base.filter((s) => s.category === view)
     return (
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
         <CategorySection category={category} items={items} />
@@ -105,7 +113,7 @@ export function ServicesView({ view, query }: ServicesViewProps) {
         <CategorySection
           key={category.id}
           category={category}
-          items={services.filter((s) => s.category === category.id)}
+          items={base.filter((s) => s.category === category.id)}
         />
       ))}
     </div>

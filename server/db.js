@@ -14,6 +14,9 @@ const memory = new Map()
 export const dbMode = process.env.DATABASE_URL ? 'pg' : 'memory'
 export const dbReady = () => ready
 
+/** Pool do PostgreSQL (ou null em modo memória). Usado por users.js. */
+export const getPool = () => pool
+
 /**
  * Decide o SSL da conexão.
  *   - PGSSL=disable|require força o comportamento.

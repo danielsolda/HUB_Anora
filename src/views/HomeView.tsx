@@ -2,10 +2,14 @@ import { ServiceCard } from '../components/ServiceCard'
 import { ArrowRightIcon } from '../lib/icons'
 import { categories, services } from '../data/services'
 import type { ViewId } from '../navigation'
+import { useAuth } from '../auth/AuthContext'
+import { canSeeService } from '../auth/access'
 
 export function HomeView({ onNavigate }: { onNavigate: (view: ViewId) => void }) {
-  const active = services.filter((s) => s.status === 'ativo')
-  const upcoming = services.filter((s) => s.status !== 'ativo').length
+  const { user } = useAuth()
+  const base = services.filter((s) => !user || canSeeService(user.role, s.id))
+  const active = base.filter((s) => s.status === 'ativo')
+  const upcoming = base.filter((s) => s.status !== 'ativo').length
 
   const stats = [
     { value: active.length, label: 'Sistemas ativos' },
@@ -73,7 +77,7 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewId) => void })
         <h2 className="text-lg font-semibold text-ink">Explorar por categoria</h2>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((category) => {
-            const count = services.filter((s) => s.category === category.id).length
+            const count = base.filter((s) => s.category === category.id).length
             const Icon = category.icon
             return (
               <button

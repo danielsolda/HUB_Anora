@@ -56,12 +56,40 @@ Aponte o serviço para este repositório e use:
 | Variável                      | Valor                                            |
 | ----------------------------- | ------------------------------------------------ |
 | `DATABASE_URL`                | injetada pelo plugin PostgreSQL                  |
+| `JWT_SECRET`                  | segredo longo p/ assinar logins (defina!)        |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | o JSON da conta de serviço (ver abaixo)          |
+| `OWNER_PASSWORD`              | (opcional) senha inicial do dono                 |
 | `SHEET_ID` / `SHEET_TAB`      | (opcional) planilha/aba a ler                    |
 
 > Se preferir manter o frontend em um serviço estático separado, defina
 > `VITE_API_URL` (no build do frontend) com a URL do backend. O padrão é mesma
 > origem, então **não precisa** num serviço único.
+
+---
+
+## Login e usuários
+
+O acesso ao HUB exige login. Há três papéis:
+
+| Papel        | O que enxerga                                    |
+| ------------ | ------------------------------------------------ |
+| **Dono**     | tudo, incluindo a aba **Usuários**               |
+| **Gestor**   | tudo, exceto **Financeiro** e a aba **Usuários** |
+| **Vendedor** | apenas a aba **Vídeos**                          |
+
+**Primeiro acesso (usuário dono).** No primeiro boot, o sistema cria o usuário
+`contatodanielsolda@gmail.com` com papel Dono. A senha:
+
+- se você definir `OWNER_PASSWORD`, é essa;
+- senão, é **aleatória e aparece nos logs do serviço** (Railway → Deployments →
+  View logs), num bloco `=== USUÁRIO DONO CRIADO ===`.
+
+Entre com ela e troque em **Trocar senha** (no rodapé do menu). Defina também
+`JWT_SECRET` para que os logins não caiam a cada deploy.
+
+**Recriar senha.** Cada um pode trocar a própria senha logado. O Dono redefine a
+senha de qualquer usuário na aba **Usuários** (gera uma senha nova para repassar).
+Novos usuários também são criados ali.
 
 ---
 
@@ -90,10 +118,19 @@ formulário aparece como card; mover um card grava a etapa no PostgreSQL.
 
 ## API
 
-| Método | Rota                          | Descrição                                   |
-| ------ | ----------------------------- | ------------------------------------------- |
-| GET    | `/api/health`                 | status (`db`, `sheet`)                      |
-| GET    | `/api/candidates`             | candidatos da planilha + etapa salva        |
-| PATCH  | `/api/candidates/:id/stage`   | salva a etapa de um card (`{ stage }`)      |
+| Método | Rota                            | Descrição                                 |
+| ------ | ------------------------------- | ----------------------------------------- |
+| GET    | `/api/health`                   | status (`db`, `dbConnected`, `sheet`)     |
+| POST   | `/api/auth/login`               | login (`{ email, password }`) → token     |
+| GET    | `/api/auth/me`                  | usuário do token                          |
+| POST   | `/api/auth/change-password`     | troca a própria senha                     |
+| GET    | `/api/users`                    | lista usuários (dono)                     |
+| POST   | `/api/users`                    | cria usuário (dono)                       |
+| PATCH  | `/api/users/:id`                | papel/nome/ativo (dono)                   |
+| POST   | `/api/users/:id/reset-password` | redefine senha (dono)                     |
+| DELETE | `/api/users/:id`                | remove usuário (dono)                     |
+| GET    | `/api/candidates`              | candidatos + etapa salva (dono/gestor)     |
+| PATCH  | `/api/candidates/:id/stage`    | salva a etapa de um card (dono/gestor)     |
 
 Etapas válidas: `novo`, `entrevista`, `entrevistado`, `experiencia`.
+Papéis: `dono`, `gestor`, `vendedor`.

@@ -214,6 +214,33 @@ export function XIcon(props: IconProps) {
   )
 }
 
+export function VideoIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="6" width="13" height="12" rx="2.5" />
+      <path d="M16 10l5-2.5v9L16 14" />
+    </Icon>
+  )
+}
+
+export function LogoutIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M15 4h2.5A1.5 1.5 0 0 1 19 5.5v13a1.5 1.5 0 0 1-1.5 1.5H15" />
+      <path d="M10 12h9M16 9l3 3-3 3" />
+    </Icon>
+  )
+}
+
+export function KeyIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="8" cy="8" r="4" />
+      <path d="M11 11l7 7M16 16l2-2M14 18l2-2" />
+    </Icon>
+  )
+}
+
 export function RefreshIcon(props: IconProps) {
   return (
     <Icon {...props}>

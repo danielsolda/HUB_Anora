@@ -1,8 +1,12 @@
-import type { ComponentType, SVGProps } from 'react'
+import { useState, type ComponentType, type SVGProps } from 'react'
 import { AnoraMark } from './AnoraLogo'
-import { GridIcon, HomeIcon, XIcon } from '../lib/icons'
+import { ChangePasswordModal } from './ChangePasswordModal'
+import { GridIcon, HomeIcon, KeyIcon, LogoutIcon, UsersIcon, VideoIcon, XIcon } from '../lib/icons'
 import { categories, services } from '../data/services'
 import type { ViewId } from '../navigation'
+import { useAuth } from '../auth/AuthContext'
+import { canAccessView, canSeeService } from '../auth/access'
+import type { Role } from '../auth/api'
 
 type NavItem = {
   id: ViewId
@@ -11,17 +15,39 @@ type NavItem = {
   count?: number
 }
 
-const primaryNav: NavItem[] = [{ id: 'inicio', label: 'Início', icon: HomeIcon }]
+const ROLE_LABELS: Record<Role, string> = {
+  dono: 'Dono',
+  gestor: 'Gestor',
+  vendedor: 'Vendedor',
+}
 
-const servicesNav: NavItem[] = [
-  { id: 'todos', label: 'Todos os serviços', icon: GridIcon, count: services.length },
-  ...categories.map((category) => ({
-    id: category.id as ViewId,
-    label: category.label,
-    icon: category.icon,
-    count: services.filter((s) => s.category === category.id).length,
-  })),
-]
+function buildNav(role: Role) {
+  const visibleServices = (categoryId: string) =>
+    services.filter((s) => s.category === categoryId && canSeeService(role, s.id)).length
+
+  const primary: NavItem[] = [
+    { id: 'inicio', label: 'Início', icon: HomeIcon },
+    { id: 'videos', label: 'Vídeos', icon: VideoIcon },
+  ]
+  const servicesNav: NavItem[] = [
+    {
+      id: 'todos',
+      label: 'Todos os serviços',
+      icon: GridIcon,
+      count: services.filter((s) => canSeeService(role, s.id)).length,
+    },
+    ...categories.map((c) => ({
+      id: c.id as ViewId,
+      label: c.label,
+      icon: c.icon,
+      count: visibleServices(c.id),
+    })),
+  ]
+  const admin: NavItem[] = [{ id: 'usuarios', label: 'Usuários', icon: UsersIcon }]
+
+  const keep = (items: NavItem[]) => items.filter((i) => canAccessView(role, i.id))
+  return { primary: keep(primary), services: keep(servicesNav), admin: keep(admin) }
+}
 
 type SidebarProps = {
   activeView: ViewId
@@ -46,9 +72,7 @@ function NavButton({
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
       className={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-        active
-          ? 'bg-cream/10 font-medium text-cream'
-          : 'text-cream/60 hover:bg-cream/5 hover:text-cream'
+        active ? 'bg-cream/10 font-medium text-cream' : 'text-cream/60 hover:bg-cream/5 hover:text-cream'
       }`}
     >
       <span
@@ -73,11 +97,14 @@ function NavButton({
 }
 
 export function Sidebar({ activeView, onNavigate, open, onClose }: SidebarProps) {
-  const year = new Date().getFullYear()
+  const { user, logout } = useAuth()
+  const [showChangePassword, setShowChangePassword] = useState(false)
+
+  if (!user) return null
+  const nav = buildNav(user.role)
 
   return (
     <>
-      {/* Backdrop (apenas mobile) */}
       <div
         onClick={onClose}
         aria-hidden="true"
@@ -95,7 +122,7 @@ export function Sidebar({ activeView, onNavigate, open, onClose }: SidebarProps)
         <div className="flex h-16 items-center justify-between gap-3 border-b border-cream/10 px-5">
           <button
             type="button"
-            onClick={() => onNavigate('inicio')}
+            onClick={() => onNavigate(nav.primary[0]?.id ?? 'videos')}
             className="flex items-center gap-2.5 text-left"
           >
             <AnoraMark className="h-8 w-8 shrink-0 text-terracotta" title="Clínica Anora" />
@@ -119,7 +146,7 @@ export function Sidebar({ activeView, onNavigate, open, onClose }: SidebarProps)
         {/* Navegação */}
         <nav className="flex-1 overflow-y-auto px-3 py-5">
           <div className="space-y-1">
-            {primaryNav.map((item) => (
+            {nav.primary.map((item) => (
               <NavButton
                 key={item.id}
                 item={item}
@@ -129,27 +156,71 @@ export function Sidebar({ activeView, onNavigate, open, onClose }: SidebarProps)
             ))}
           </div>
 
-          <p className="px-3 pb-2 pt-6 text-[0.65rem] uppercase tracking-[0.22em] text-cream/35">
-            Serviços
-          </p>
-          <div className="space-y-1">
-            {servicesNav.map((item) => (
-              <NavButton
-                key={item.id}
-                item={item}
-                active={activeView === item.id}
-                onClick={() => onNavigate(item.id)}
-              />
-            ))}
-          </div>
+          {nav.services.length > 0 ? (
+            <>
+              <p className="px-3 pb-2 pt-6 text-[0.65rem] uppercase tracking-[0.22em] text-cream/35">
+                Serviços
+              </p>
+              <div className="space-y-1">
+                {nav.services.map((item) => (
+                  <NavButton
+                    key={item.id}
+                    item={item}
+                    active={activeView === item.id}
+                    onClick={() => onNavigate(item.id)}
+                  />
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {nav.admin.length > 0 ? (
+            <>
+              <p className="px-3 pb-2 pt-6 text-[0.65rem] uppercase tracking-[0.22em] text-cream/35">
+                Administração
+              </p>
+              <div className="space-y-1">
+                {nav.admin.map((item) => (
+                  <NavButton
+                    key={item.id}
+                    item={item}
+                    active={activeView === item.id}
+                    onClick={() => onNavigate(item.id)}
+                  />
+                ))}
+              </div>
+            </>
+          ) : null}
         </nav>
 
-        {/* Rodapé */}
-        <div className="border-t border-cream/10 px-5 py-4 text-[0.7rem] leading-relaxed text-cream/40">
-          <p className="uppercase tracking-[0.15em]">Uso interno</p>
-          <p className="mt-1">© {year} Clínica Anora</p>
+        {/* Rodapé: usuário + ações */}
+        <div className="border-t border-cream/10 px-4 py-4">
+          <p className="truncate text-sm font-medium text-cream">{user.name || user.email}</p>
+          <p className="text-xs text-cream/45">{ROLE_LABELS[user.role]}</p>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowChangePassword(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-cream/15 px-2.5 py-1.5 text-xs text-cream/70 transition-colors hover:border-cream/30 hover:text-cream"
+            >
+              <KeyIcon className="h-3.5 w-3.5" />
+              Trocar senha
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="inline-flex items-center gap-1.5 rounded-full border border-cream/15 px-2.5 py-1.5 text-xs text-cream/70 transition-colors hover:border-cream/30 hover:text-cream"
+            >
+              <LogoutIcon className="h-3.5 w-3.5" />
+              Sair
+            </button>
+          </div>
         </div>
       </aside>
+
+      {showChangePassword ? (
+        <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      ) : null}
     </>
   )
 }

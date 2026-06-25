@@ -1,6 +1,8 @@
 import { KanbanBoard } from '../components/KanbanBoard'
 import { categories, services } from '../data/services'
 import type { Service } from '../types'
+import { useAuth } from '../auth/AuthContext'
+import { canSeeService } from '../auth/access'
 
 const CATEGORY_ID = 'gestao' as const
 
@@ -28,8 +30,11 @@ type GestaoWorkspaceProps = {
 }
 
 export function GestaoWorkspace({ activeModule, onSelectModule }: GestaoWorkspaceProps) {
+  const { user } = useAuth()
   const category = categories.find((c) => c.id === CATEGORY_ID)!
-  const modules = services.filter((s) => s.category === CATEGORY_ID)
+  const modules = services.filter(
+    (s) => s.category === CATEGORY_ID && (!user || canSeeService(user.role, s.id)),
+  )
 
   const activeId =
     activeModule && modules.some((m) => m.id === activeModule)

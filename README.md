@@ -120,9 +120,15 @@ troca de view conforme a aba ativa.
 
 ```
 src/
+├── auth/
+│   ├── AuthContext.tsx        # estado de login (usuário, login/logout)
+│   ├── api.ts                 # cliente HTTP autenticado + API de auth/usuários
+│   └── access.ts              # ← regras de visibilidade por papel
 ├── components/
-│   ├── Sidebar.tsx            # navegação principal (abas) + marca
+│   ├── Sidebar.tsx            # navegação (filtrada por papel) + usuário
 │   ├── TopBar.tsx             # barra superior + busca
+│   ├── LoginScreen.tsx        # tela de login
+│   ├── ChangePasswordModal.tsx# trocar a própria senha
 │   ├── WelcomeOverlay.tsx     # animação "Bem-vindo ao HUB"
 │   ├── ServiceCard.tsx        # card de um sistema
 │   ├── EmbedModal.tsx         # modal com conteúdo embutido (iframe)
@@ -132,20 +138,21 @@ src/
 ├── views/
 │   ├── HomeView.tsx           # aba Início (central de controle)
 │   ├── ServicesView.tsx       # "Todos", categoria e resultados de busca
-│   └── GestaoWorkspace.tsx    # Gestão: 2ª sidebar de módulos + conteúdo
-├── data/
-│   └── services.ts            # ← registro de serviços e categorias (edite aqui)
+│   ├── GestaoWorkspace.tsx    # Gestão: 2ª sidebar de módulos + conteúdo
+│   ├── VideosView.tsx         # aba Vídeos
+│   └── UsersView.tsx          # aba Usuários (gestão de acessos)
+├── data/services.ts          # ← registro de serviços e categorias (edite aqui)
 ├── lib/
 │   ├── icons.tsx              # ícones de linha
-│   └── candidates.ts          # ← dados do Kanban (planilha, etapas, exemplos)
+│   └── candidates.ts          # cliente da API do Kanban
 ├── navigation.ts              # rotas (view + módulo) via hash da URL
-├── types.ts                   # tipos (Service, Category, status)
-├── App.tsx                    # app shell + troca de views
-└── index.css                  # estilos base + tokens + animações
+├── types.ts · App.tsx · index.css
 
 server/                        # backend (Node + Express)
 ├── index.js                   # API + serve o frontend (produção)
-├── db.js                      # PostgreSQL (etapas dos cards) + fallback memória
+├── auth.js                    # hash de senha (bcrypt) + tokens (JWT)
+├── users.js                   # usuários e papéis + seed do dono
+├── db.js                      # PostgreSQL (etapas + fallback memória)
 ├── sheets.js                  # leitura da planilha via conta de serviço Google
 └── stages.js                  # etapas do Kanban (compartilhado)
 ```
@@ -155,6 +162,24 @@ server/                        # backend (Node + Express)
 A rota tem uma aba e, opcionalmente, um módulo, refletidos no hash da URL:
 `/#gestao` ou `/#gestao/contratacao` — links são compartilháveis. A tela de
 boas-vindas roda uma vez por sessão e respeita `prefers-reduced-motion`.
+
+---
+
+## Acessos e perfis
+
+O HUB exige **login**. Três papéis controlam o que cada pessoa vê:
+
+| Papel        | Acesso                                            |
+| ------------ | ------------------------------------------------- |
+| **Dono**     | tudo, incluindo a aba **Usuários**                |
+| **Gestor**   | tudo, exceto **Financeiro** e a aba **Usuários**  |
+| **Vendedor** | apenas a aba **Vídeos**                            |
+
+O usuário dono é criado no primeiro boot (senha nos logs ou via `OWNER_PASSWORD`).
+A gestão de usuários (criar, redefinir senha, papel, ativar/remover) fica na aba
+**Usuários**, e cada um troca a própria senha pelo rodapé do menu. As regras de
+visibilidade estão em [`src/auth/access.ts`](src/auth/access.ts); os detalhes de
+deploy em [`DEPLOY.md`](DEPLOY.md).
 
 ---
 
@@ -180,6 +205,6 @@ O passo a passo de configuração (Railway, PostgreSQL e conta de serviço) est�
 ## Stack
 
 **Frontend:** React 18 · Vite 5 · TypeScript 5 · Tailwind CSS 3.
-**Backend:** Node · Express · PostgreSQL · Google Sheets API.
+**Backend:** Node · Express · PostgreSQL · JWT + bcrypt · Google Sheets API.
 
 > O resultado acompanha o processo.
