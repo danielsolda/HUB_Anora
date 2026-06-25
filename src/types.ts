@@ -33,6 +33,11 @@ export type Service = {
   href?: string
   /** Abre em nova aba quando o destino é um sistema separado. */
   external?: boolean
+  /** Link secundário opcional (ex.: planilha de respostas, área administrativa). */
+  secondary?: {
+    label: string
+    href: string
+  }
   /** Ícone do card. */
   icon: ComponentType<SVGProps<SVGSVGElement>>
   /** Palavras-chave adicionais para a busca. */

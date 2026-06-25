@@ -9,6 +9,7 @@ import {
   HeartPulseIcon,
   MegaphoneIcon,
   StethoscopeIcon,
+  UserPlusIcon,
   UsersIcon,
   WalletIcon,
 } from '../lib/icons'
@@ -57,15 +58,16 @@ export const categories: Category[] = [
  */
 export const services: Service[] = [
   {
-    id: 'dashboard-geral',
-    name: 'Dashboard Geral',
+    id: 'crm-dashboard',
+    name: 'Análise do CRM',
     description:
-      'Visão consolidada dos indicadores da clínica: atendimentos, ocupação e evolução ao longo do tempo.',
+      'Indicadores do funil de atendimento e conversão, a partir dos dados do CRM (Kommo).',
     category: 'analise',
     status: 'ativo',
-    href: '#',
+    href: 'https://kommo-dashboard-clinica-anora.lvvvr0.easypanel.host/',
+    external: true,
     icon: DashboardIcon,
-    keywords: ['indicadores', 'kpi', 'visão geral', 'painel'],
+    keywords: ['crm', 'kommo', 'funil', 'conversão', 'vendas', 'indicadores'],
   },
   {
     id: 'dashboard-financeiro',
@@ -73,8 +75,7 @@ export const services: Service[] = [
     description:
       'Faturamento, recebimentos e desempenho por procedimento, organizados para leitura rápida.',
     category: 'analise',
-    status: 'ativo',
-    href: '#',
+    status: 'em-breve',
     icon: ChartIcon,
     keywords: ['faturamento', 'receita', 'financeiro', 'desempenho'],
   },
@@ -117,6 +118,22 @@ export const services: Service[] = [
     status: 'em-breve',
     icon: StethoscopeIcon,
     keywords: ['prontuário', 'histórico', 'clínico'],
+  },
+  {
+    id: 'contratacao',
+    name: 'Contratação',
+    description:
+      'Formulário de vagas e triagem de candidatos para a equipe da clínica. As respostas ficam centralizadas em planilha.',
+    category: 'gestao',
+    status: 'ativo',
+    href: 'https://kommo-dashboard-vagas-clinicaanora.lvvvr0.easypanel.host/',
+    external: true,
+    secondary: {
+      label: 'Ver respostas',
+      href: 'https://docs.google.com/spreadsheets/d/1U6_a-W2dZAgWRzwXCNr3KRLbl7ygJrE21S-8LiMncD0/edit',
+    },
+    icon: UserPlusIcon,
+    keywords: ['vagas', 'recrutamento', 'rh', 'contratação', 'candidatos', 'equipe'],
   },
   {
     id: 'pacientes',

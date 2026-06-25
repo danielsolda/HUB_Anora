@@ -54,6 +54,16 @@ export function UsersIcon(props: IconProps) {
   )
 }
 
+export function UserPlusIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="10" cy="8" r="3.2" />
+      <path d="M4 19a6 6 0 0 1 12 0" />
+      <path d="M18 8v5M15.5 10.5h5" />
+    </Icon>
+  )
+}
+
 export function WalletIcon(props: IconProps) {
   return (
     <Icon {...props}>
