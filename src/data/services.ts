@@ -1,19 +1,17 @@
 import type { Category, Service } from '../types'
 import {
-  BoxIcon,
   CalendarIcon,
   ChartIcon,
-  ChatIcon,
   ClipboardIcon,
   DashboardIcon,
   GoogleSheetsIcon,
   HeartPulseIcon,
-  MegaphoneIcon,
   StethoscopeIcon,
   UserPlusIcon,
   UsersIcon,
   WalletIcon,
 } from '../lib/icons'
+import { SHEET_EDIT_URL, SHEET_PREVIEW_URL } from '../lib/candidates'
 
 /**
  * Categorias usadas para organizar os serviços do HUB.
@@ -38,18 +36,6 @@ export const categories: Category[] = [
     description: 'Pessoas, finanças e a rotina administrativa.',
     icon: UsersIcon,
   },
-  {
-    id: 'marketing',
-    label: 'Marketing',
-    description: 'Relacionamento e presença da marca, com critério.',
-    icon: MegaphoneIcon,
-  },
-  {
-    id: 'operacao',
-    label: 'Operação',
-    description: 'Estoque, insumos e o que sustenta o dia a dia.',
-    icon: BoxIcon,
-  },
 ]
 
 /**
@@ -61,6 +47,9 @@ export const categories: Category[] = [
  *   2. Acrescente um objeto aqui com um `id` único.
  *   3. Defina `status` ('ativo' | 'em-breve' | 'manutencao') e o `href`.
  * Os cards aparecem automaticamente, agrupados pela `category`.
+ *
+ * Dica: `href` pode ser um link interno por hash (ex.: '#gestao/contratacao')
+ * para abrir um módulo do próprio HUB.
  */
 export const services: Service[] = [
   {
@@ -129,20 +118,18 @@ export const services: Service[] = [
     id: 'contratacao',
     name: 'Contratação',
     description:
-      'Formulário de vagas e triagem de candidatos para a equipe da clínica. As respostas ficam centralizadas em planilha.',
+      'Acompanhe os candidatos das vagas em um quadro, do primeiro contato ao período de experiência.',
     category: 'gestao',
     status: 'ativo',
-    href: 'https://kommo-dashboard-vagas-clinicaanora.lvvvr0.easypanel.host/',
-    external: true,
+    href: '#gestao/contratacao',
+    icon: UserPlusIcon,
     secondary: {
       label: 'Ver respostas',
-      href: 'https://docs.google.com/spreadsheets/d/1U6_a-W2dZAgWRzwXCNr3KRLbl7ygJrE21S-8LiMncD0/edit',
-      embedSrc:
-        'https://docs.google.com/spreadsheets/d/1U6_a-W2dZAgWRzwXCNr3KRLbl7ygJrE21S-8LiMncD0/preview',
+      href: SHEET_EDIT_URL,
+      embedSrc: SHEET_PREVIEW_URL,
       icon: GoogleSheetsIcon,
     },
-    icon: UserPlusIcon,
-    keywords: ['vagas', 'recrutamento', 'rh', 'contratação', 'candidatos', 'equipe'],
+    keywords: ['vagas', 'recrutamento', 'rh', 'contratação', 'candidatos', 'kanban', 'equipe'],
   },
   {
     id: 'pacientes',
@@ -163,35 +150,5 @@ export const services: Service[] = [
     status: 'em-breve',
     icon: WalletIcon,
     keywords: ['caixa', 'contas', 'pagamentos', 'repasses'],
-  },
-  {
-    id: 'marketing',
-    name: 'Campanhas',
-    description:
-      'Relacionamento e comunicação com a base, conduzidos com leveza e consistência.',
-    category: 'marketing',
-    status: 'em-breve',
-    icon: MegaphoneIcon,
-    keywords: ['campanhas', 'comunicação', 'relacionamento'],
-  },
-  {
-    id: 'atendimento-whatsapp',
-    name: 'Mensagens',
-    description:
-      'Conversas e confirmações centralizadas, mantendo o tom próximo da marca.',
-    category: 'marketing',
-    status: 'em-breve',
-    icon: ChatIcon,
-    keywords: ['whatsapp', 'mensagens', 'atendimento', 'chat'],
-  },
-  {
-    id: 'estoque',
-    name: 'Estoque',
-    description:
-      'Insumos e produtos sob controle, com visão do que entra e do que falta.',
-    category: 'operacao',
-    status: 'em-breve',
-    icon: BoxIcon,
-    keywords: ['estoque', 'insumos', 'produtos', 'inventário'],
   },
 ]

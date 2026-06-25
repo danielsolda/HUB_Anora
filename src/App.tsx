@@ -4,8 +4,9 @@ import { TopBar } from './components/TopBar'
 import { WelcomeOverlay } from './components/WelcomeOverlay'
 import { HomeView } from './views/HomeView'
 import { ServicesView } from './views/ServicesView'
-import type { ViewId } from './navigation'
-import { readHash, writeHash } from './navigation'
+import { GestaoWorkspace } from './views/GestaoWorkspace'
+import type { Route, ViewId } from './navigation'
+import { readRoute, writeRoute } from './navigation'
 
 function prefersReducedMotion() {
   try {
@@ -18,7 +19,8 @@ function prefersReducedMotion() {
 function shouldShowIntro() {
   try {
     if (prefersReducedMotion()) return false
-    if (readHash() && readHash() !== 'inicio') return false
+    const route = readRoute()
+    if (route && route.view !== 'inicio') return false
     return sessionStorage.getItem('anora_intro_seen') !== '1'
   } catch {
     return true
@@ -26,28 +28,32 @@ function shouldShowIntro() {
 }
 
 export default function App() {
-  const [view, setView] = useState<ViewId>(() => readHash() ?? 'inicio')
+  const [route, setRoute] = useState<Route>(() => readRoute() ?? { view: 'inicio', module: null })
   const [query, setQuery] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showIntro, setShowIntro] = useState(shouldShowIntro)
 
-  // Mantém a URL (hash) em sincronia com a aba atual — permite compartilhar links.
+  // Mantém a URL (hash) em sincronia com a rota atual.
   useEffect(() => {
-    writeHash(view)
-  }, [view])
+    writeRoute(route)
+  }, [route])
 
-  // Acompanha mudanças externas do hash (link compartilhado, edição manual).
+  // Acompanha mudanças externas do hash (links internos, voltar, etc.).
   useEffect(() => {
     const onHashChange = () => {
-      const next = readHash()
-      if (next) setView(next)
+      const next = readRoute()
+      if (next) {
+        setRoute(next)
+        setQuery('')
+        window.scrollTo({ top: 0 })
+      }
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
 
-  const navigate = useCallback((next: ViewId) => {
-    setView(next)
+  const navigate = useCallback((view: ViewId, module: string | null = null) => {
+    setRoute({ view, module })
     setQuery('')
     setSidebarOpen(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -55,30 +61,42 @@ export default function App() {
 
   const searching = query.trim().length > 0
 
+  function renderMain() {
+    if (searching) {
+      return <ServicesView view="todos" query={query} />
+    }
+    if (route.view === 'inicio') {
+      return <HomeView onNavigate={(view) => navigate(view)} />
+    }
+    if (route.view === 'gestao') {
+      return (
+        <GestaoWorkspace
+          activeModule={route.module}
+          onSelectModule={(module) => navigate('gestao', module)}
+        />
+      )
+    }
+    return <ServicesView view={route.view} query="" />
+  }
+
   return (
     <div className="min-h-screen bg-anora">
       <Sidebar
-        activeView={view}
-        onNavigate={navigate}
+        activeView={route.view}
+        onNavigate={(view) => navigate(view)}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
 
       <div className="flex min-h-screen flex-col lg:pl-[264px]">
         <TopBar
-          view={view}
+          view={route.view}
           query={query}
           onQuery={setQuery}
           onOpenMenu={() => setSidebarOpen(true)}
         />
 
-        <main className="flex-1">
-          {!searching && view === 'inicio' ? (
-            <HomeView onNavigate={navigate} />
-          ) : (
-            <ServicesView view={view === 'inicio' ? 'todos' : view} query={query} />
-          )}
-        </main>
+        <main className="flex-1">{renderMain()}</main>
       </div>
 
       {showIntro ? <WelcomeOverlay onDone={() => setShowIntro(false)} /> : null}

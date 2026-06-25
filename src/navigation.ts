@@ -4,6 +4,9 @@ import type { CategoryId } from './types'
 /** Telas (abas) do HUB: início, "todos" e cada categoria. */
 export type ViewId = 'inicio' | 'todos' | CategoryId
 
+/** Rota atual: uma aba e, opcionalmente, um módulo dentro dela. */
+export type Route = { view: ViewId; module: string | null }
+
 export const viewIds: ViewId[] = [
   'inicio',
   'todos',
@@ -21,15 +24,21 @@ export function viewLabel(view: ViewId): string {
   return categories.find((c) => c.id === view)?.label ?? 'Serviços'
 }
 
-/** Lê a aba atual a partir do hash da URL (deep-link / compartilhamento). */
-export function readHash(): ViewId | null {
+/**
+ * Lê a rota atual do hash da URL. Formato: `#view` ou `#view/module`.
+ * Ex.: `#gestao/contratacao` → { view: 'gestao', module: 'contratacao' }.
+ */
+export function readRoute(): Route | null {
   const raw = window.location.hash.replace(/^#/, '')
-  return isViewId(raw) ? raw : null
+  if (!raw) return null
+  const [view, module] = raw.split('/')
+  if (!isViewId(view)) return null
+  return { view, module: module || null }
 }
 
 /** Atualiza o hash da URL sem poluir o histórico. */
-export function writeHash(view: ViewId): void {
-  const target = `#${view}`
+export function writeRoute(route: Route): void {
+  const target = route.module ? `#${route.view}/${route.module}` : `#${route.view}`
   if (window.location.hash !== target) {
     window.history.replaceState(null, '', target)
   }

@@ -4,12 +4,7 @@ import type { ComponentType, SVGProps } from 'react'
 export type ServiceStatus = 'ativo' | 'em-breve' | 'manutencao'
 
 /** Identificadores das categorias usadas para agrupar serviços. */
-export type CategoryId =
-  | 'gestao'
-  | 'atendimento'
-  | 'analise'
-  | 'marketing'
-  | 'operacao'
+export type CategoryId = 'gestao' | 'atendimento' | 'analise'
 
 export type Category = {
   id: CategoryId

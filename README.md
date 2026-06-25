@@ -117,29 +117,54 @@ troca de view conforme a aba ativa.
 ```
 src/
 ├── components/
-│   ├── Sidebar.tsx        # navegação (abas) + marca
-│   ├── TopBar.tsx         # barra superior + busca
-│   ├── WelcomeOverlay.tsx # animação "Bem-vindo ao HUB"
-│   ├── ServiceCard.tsx    # card de um sistema
-│   └── AnoraLogo.tsx      # símbolo + lockup da marca
+│   ├── Sidebar.tsx            # navegação principal (abas) + marca
+│   ├── TopBar.tsx             # barra superior + busca
+│   ├── WelcomeOverlay.tsx     # animação "Bem-vindo ao HUB"
+│   ├── ServiceCard.tsx        # card de um sistema
+│   ├── EmbedModal.tsx         # modal com conteúdo embutido (iframe)
+│   ├── KanbanBoard.tsx        # quadro de Contratação (etapas + cards)
+│   ├── CandidateDetailModal.tsx # dados do candidato + troca de etapa
+│   └── AnoraLogo.tsx          # símbolo + lockup da marca
 ├── views/
-│   ├── HomeView.tsx       # aba Início (central de controle)
-│   └── ServicesView.tsx   # "Todos", categoria e resultados de busca
+│   ├── HomeView.tsx           # aba Início (central de controle)
+│   ├── ServicesView.tsx       # "Todos", categoria e resultados de busca
+│   └── GestaoWorkspace.tsx    # Gestão: 2ª sidebar de módulos + conteúdo
 ├── data/
-│   └── services.ts        # ← registro de serviços e categorias (edite aqui)
+│   └── services.ts            # ← registro de serviços e categorias (edite aqui)
 ├── lib/
-│   └── icons.tsx          # ícones de linha
-├── navigation.ts          # abas (ViewId) + deep-link por hash da URL
-├── types.ts               # tipos (Service, Category, status)
-├── App.tsx                # app shell + troca de views
-└── index.css              # estilos base + tokens + animações
+│   ├── icons.tsx              # ícones de linha
+│   └── candidates.ts          # ← dados do Kanban (planilha, etapas, exemplos)
+├── navigation.ts              # rotas (view + módulo) via hash da URL
+├── types.ts                   # tipos (Service, Category, status)
+├── App.tsx                    # app shell + troca de views
+└── index.css                  # estilos base + tokens + animações
 ```
 
 ### Navegação
 
-Cada aba corresponde a um `ViewId` (`inicio`, `todos` ou uma categoria) e fica
-refletida no hash da URL (ex.: `/#gestao`), então links são compartilháveis. A
-tela de boas-vindas roda uma vez por sessão e respeita `prefers-reduced-motion`.
+A rota tem uma aba e, opcionalmente, um módulo, refletidos no hash da URL:
+`/#gestao` ou `/#gestao/contratacao` — links são compartilháveis. A tela de
+boas-vindas roda uma vez por sessão e respeita `prefers-reduced-motion`.
+
+---
+
+## Contratação (Kanban)
+
+Em **Gestão → Contratação** há um quadro com as etapas _Novo Candidato_,
+_Marcando entrevista_, _Entrevistado_ e _Experiência 90 dias_. Cada resposta do
+formulário de vagas vira um card; clicar no card abre os dados preenchidos e
+permite mover a pessoa de etapa (arraste o card ou use os botões no modal).
+
+**Origem dos dados** ([`src/lib/candidates.ts`](src/lib/candidates.ts)): a
+planilha de respostas é lida como CSV pelo endpoint público do Google (`gviz`).
+Para funcionar ao vivo, a planilha precisa estar compartilhada como **"qualquer
+pessoa com o link"**. Se a leitura falhar, o quadro usa dados de exemplo e exibe
+um aviso de _modo demonstração_. As etapas (mover cards) são guardadas no
+**navegador** (`localStorage`); persistência entre dispositivos exige um backend
+— próximo passo natural quando o fluxo amadurecer.
+
+Etapas e identificadores da planilha ficam no topo de `candidates.ts`, fáceis de
+ajustar.
 
 ---
 

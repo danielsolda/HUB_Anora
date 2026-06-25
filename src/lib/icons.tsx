@@ -214,6 +214,17 @@ export function XIcon(props: IconProps) {
   )
 }
 
+export function RefreshIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M20 11a8 8 0 0 0-14-4.5L4 8" />
+      <path d="M4 4v4h4" />
+      <path d="M4 13a8 8 0 0 0 14 4.5L20 16" />
+      <path d="M20 20v-4h-4" />
+    </Icon>
+  )
+}
+
 /** Ícone da marca Google Sheets (cores fixas, não usa currentColor). */
 export function GoogleSheetsIcon(props: IconProps) {
   return (
