@@ -29,6 +29,8 @@ export type Service = {
   href?: string
   /** Abre em nova aba quando o destino é um sistema separado. */
   external?: boolean
+  /** URL para embutir o sistema inline (iframe) dentro do workspace da categoria. */
+  embedUrl?: string
   /** Link secundário opcional (ex.: planilha de respostas, área administrativa). */
   secondary?: {
     label: string

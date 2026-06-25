@@ -1,15 +1,14 @@
 import { KanbanBoard } from '../components/KanbanBoard'
+import { DashboardEmbed } from '../components/DashboardEmbed'
 import { categories, services } from '../data/services'
-import type { Service } from '../types'
+import type { CategoryId, Service } from '../types'
 import { useAuth } from '../auth/AuthContext'
 import { canSeeService } from '../auth/access'
-
-const CATEGORY_ID = 'gestao' as const
 
 function ModulePlaceholder({ service }: { service: Service }) {
   const Icon = service.icon
   return (
-    <div className="flex h-full items-center justify-center p-8">
+    <div className="flex h-full min-h-[24rem] items-center justify-center p-8">
       <div className="max-w-sm text-center">
         <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl2 bg-linen text-mauve">
           <Icon className="h-7 w-7" />
@@ -24,16 +23,28 @@ function ModulePlaceholder({ service }: { service: Service }) {
   )
 }
 
-type GestaoWorkspaceProps = {
+function ModuleContent({ service }: { service: Service }) {
+  // Cada módulo abre seu conteúdo: Kanban, dashboard embutido ou placeholder.
+  if (service.id === 'contratacao') return <KanbanBoard />
+  if (service.embedUrl) return <DashboardEmbed title={service.name} src={service.embedUrl} />
+  return <ModulePlaceholder service={service} />
+}
+
+type CategoryWorkspaceProps = {
+  categoryId: CategoryId
   activeModule: string | null
   onSelectModule: (moduleId: string) => void
 }
 
-export function GestaoWorkspace({ activeModule, onSelectModule }: GestaoWorkspaceProps) {
+export function CategoryWorkspace({
+  categoryId,
+  activeModule,
+  onSelectModule,
+}: CategoryWorkspaceProps) {
   const { user } = useAuth()
-  const category = categories.find((c) => c.id === CATEGORY_ID)!
+  const category = categories.find((c) => c.id === categoryId)!
   const modules = services.filter(
-    (s) => s.category === CATEGORY_ID && (!user || canSeeService(user.role, s.id)),
+    (s) => s.category === categoryId && (!user || canSeeService(user.role, s.id)),
   )
 
   const activeId =
@@ -61,9 +72,7 @@ export function GestaoWorkspace({ activeModule, onSelectModule }: GestaoWorkspac
                 onClick={() => onSelectModule(module.id)}
                 aria-current={isActive ? 'page' : undefined}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                  isActive
-                    ? 'bg-ink text-cream'
-                    : 'text-ink/70 hover:bg-ink/5 hover:text-ink'
+                  isActive ? 'bg-ink text-cream' : 'text-ink/70 hover:bg-ink/5 hover:text-ink'
                 }`}
               >
                 <Icon className="h-[18px] w-[18px] shrink-0" />
@@ -91,9 +100,7 @@ export function GestaoWorkspace({ activeModule, onSelectModule }: GestaoWorkspac
                 type="button"
                 onClick={() => onSelectModule(module.id)}
                 className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-ink text-cream'
-                    : 'bg-cream text-ink/70 ring-1 ring-ink/10'
+                  isActive ? 'bg-ink text-cream' : 'bg-cream text-ink/70 ring-1 ring-ink/10'
                 }`}
               >
                 {module.name}
@@ -105,11 +112,7 @@ export function GestaoWorkspace({ activeModule, onSelectModule }: GestaoWorkspac
 
       {/* Conteúdo do módulo */}
       <div className="min-w-0 flex-1">
-        {activeId === 'contratacao' ? (
-          <KanbanBoard />
-        ) : activeService ? (
-          <ModulePlaceholder service={activeService} />
-        ) : null}
+        {activeService ? <ModuleContent service={activeService} /> : null}
       </div>
     </div>
   )

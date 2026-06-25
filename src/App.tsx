@@ -6,7 +6,7 @@ import { LoginScreen } from './components/LoginScreen'
 import { AnoraMark } from './components/AnoraLogo'
 import { HomeView } from './views/HomeView'
 import { ServicesView } from './views/ServicesView'
-import { GestaoWorkspace } from './views/GestaoWorkspace'
+import { CategoryWorkspace } from './views/CategoryWorkspace'
 import { VideosView } from './views/VideosView'
 import { UsersView } from './views/UsersView'
 import type { Route, ViewId } from './navigation'
@@ -87,11 +87,12 @@ function AppShell({ user }: { user: User }) {
     if (route.view === 'inicio') return <HomeView onNavigate={(view) => navigate(view)} />
     if (route.view === 'videos') return <VideosView />
     if (route.view === 'usuarios') return <UsersView />
-    if (route.view === 'gestao') {
+    if (route.view === 'gestao' || route.view === 'analise') {
       return (
-        <GestaoWorkspace
+        <CategoryWorkspace
+          categoryId={route.view}
           activeModule={route.module}
-          onSelectModule={(module) => navigate('gestao', module)}
+          onSelectModule={(module) => navigate(route.view, module)}
         />
       )
     }

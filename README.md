@@ -134,11 +134,12 @@ src/
 │   ├── EmbedModal.tsx         # modal com conteúdo embutido (iframe)
 │   ├── KanbanBoard.tsx        # quadro de Contratação (etapas + cards)
 │   ├── CandidateDetailModal.tsx # dados do candidato + troca de etapa
+│   ├── DashboardEmbed.tsx     # sistema externo embutido inline (iframe)
 │   └── AnoraLogo.tsx          # símbolo + lockup da marca
 ├── views/
 │   ├── HomeView.tsx           # aba Início (central de controle)
 │   ├── ServicesView.tsx       # "Todos", categoria e resultados de busca
-│   ├── GestaoWorkspace.tsx    # Gestão: 2ª sidebar de módulos + conteúdo
+│   ├── CategoryWorkspace.tsx  # Gestão/Análise: 2ª sidebar + módulo (Kanban/dashboard)
 │   ├── VideosView.tsx         # aba Vídeos
 │   └── UsersView.tsx          # aba Usuários (gestão de acessos)
 ├── data/services.ts          # ← registro de serviços e categorias (edite aqui)
