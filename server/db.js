@@ -8,9 +8,27 @@ import pg from 'pg'
  */
 
 let pool = null
+let ready = false
 const memory = new Map()
 
 export const dbMode = process.env.DATABASE_URL ? 'pg' : 'memory'
+export const dbReady = () => ready
+
+/**
+ * Decide o SSL da conexão.
+ *   - PGSSL=disable|require força o comportamento.
+ *   - Conexões locais e da rede interna do Railway (`*.railway.internal`) não
+ *     usam SSL; as públicas (proxy) usam, sem validar o certificado.
+ */
+function sslConfig(url) {
+  const mode = (process.env.PGSSL || '').toLowerCase()
+  if (mode === 'disable' || mode === 'false') return false
+  if (mode === 'require' || mode === 'true') return { rejectUnauthorized: false }
+  if (/localhost|127\.0\.0\.1|::1|\.railway\.internal|\.internal|sslmode=disable/.test(url)) {
+    return false
+  }
+  return { rejectUnauthorized: false }
+}
 
 export async function initDb() {
   if (!process.env.DATABASE_URL) {
@@ -19,11 +37,7 @@ export async function initDb() {
   }
 
   const url = process.env.DATABASE_URL
-  const isLocal = /localhost|127\.0\.0\.1/.test(url) || /sslmode=disable/.test(url)
-  pool = new pg.Pool({
-    connectionString: url,
-    ssl: isLocal ? false : { rejectUnauthorized: false },
-  })
+  pool = new pg.Pool({ connectionString: url, ssl: sslConfig(url) })
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS candidate_stages (
@@ -32,17 +46,27 @@ export async function initDb() {
       updated_at   timestamptz NOT NULL DEFAULT now()
     )
   `)
+  ready = true
   console.log('[db] PostgreSQL conectado.')
 }
 
-/** Retorna um mapa { candidate_id: stage } com as etapas salvas. */
+/**
+ * Retorna um mapa { candidate_id: stage } com as etapas salvas.
+ * Em caso de erro de leitura, devolve vazio para não quebrar o quadro — os
+ * candidatos seguem aparecendo com a etapa padrão.
+ */
 export async function getStages() {
   if (!pool) return Object.fromEntries(memory)
-  const { rows } = await pool.query('SELECT candidate_id, stage FROM candidate_stages')
-  return Object.fromEntries(rows.map((r) => [r.candidate_id, r.stage]))
+  try {
+    const { rows } = await pool.query('SELECT candidate_id, stage FROM candidate_stages')
+    return Object.fromEntries(rows.map((r) => [r.candidate_id, r.stage]))
+  } catch (error) {
+    console.error('[db] erro ao ler etapas (seguindo sem elas):', error.message)
+    return {}
+  }
 }
 
-/** Salva (upsert) a etapa de um candidato. */
+/** Salva (upsert) a etapa de um candidato. Lança erro para o chamador tratar. */
 export async function setStage(id, stage) {
   if (!pool) {
     memory.set(id, stage)

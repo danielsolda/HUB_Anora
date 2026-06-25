@@ -2,7 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { initDb, getStages, setStage, dbMode } from './db.js'
+import { initDb, getStages, setStage, dbMode, dbReady } from './db.js'
 import { getCandidates, sheetMode } from './sheets.js'
 import { STAGE_IDS } from './stages.js'
 
@@ -15,7 +15,7 @@ app.use(cors())
 
 // ── API ──
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, db: dbMode, sheet: sheetMode })
+  res.json({ ok: true, db: dbMode, dbConnected: dbReady(), sheet: sheetMode })
 })
 
 // Lista candidatos da planilha, com a etapa salva no banco (quando houver).
