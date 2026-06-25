@@ -7,5 +7,9 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // Em desenvolvimento, encaminha /api para o backend (npm run server).
+    proxy: {
+      '/api': 'http://localhost:8787',
+    },
   },
 })

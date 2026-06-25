@@ -17,11 +17,15 @@ símbolo do "espelho desconstruído" e um tom calmo e objetivo.
 Pré-requisitos: **Node 18+**.
 
 ```bash
-npm install      # instala as dependências
-npm run dev      # ambiente de desenvolvimento (http://localhost:5173)
+npm install      # instala as dependências (frontend + backend)
+npm run dev      # frontend em http://localhost:5173 (proxy /api → backend)
+npm run server   # backend (API + banco) em http://localhost:8787
 npm run build    # gera a versão de produção em dist/
-npm run preview  # serve o build de produção localmente
+npm start        # produção: servidor único (frontend + API) em :8787
 ```
+
+O Kanban de Contratação depende do backend. Para o passo a passo de deploy
+(Railway + PostgreSQL + conta de serviço Google), veja [`DEPLOY.md`](DEPLOY.md).
 
 ---
 
@@ -138,6 +142,12 @@ src/
 ├── types.ts                   # tipos (Service, Category, status)
 ├── App.tsx                    # app shell + troca de views
 └── index.css                  # estilos base + tokens + animações
+
+server/                        # backend (Node + Express)
+├── index.js                   # API + serve o frontend (produção)
+├── db.js                      # PostgreSQL (etapas dos cards) + fallback memória
+├── sheets.js                  # leitura da planilha via conta de serviço Google
+└── stages.js                  # etapas do Kanban (compartilhado)
 ```
 
 ### Navegação
@@ -155,21 +165,21 @@ _Marcando entrevista_, _Entrevistado_ e _Experiência 90 dias_. Cada resposta do
 formulário de vagas vira um card; clicar no card abre os dados preenchidos e
 permite mover a pessoa de etapa (arraste o card ou use os botões no modal).
 
-**Origem dos dados** ([`src/lib/candidates.ts`](src/lib/candidates.ts)): a
-planilha de respostas é lida como CSV pelo endpoint público do Google (`gviz`).
-Para funcionar ao vivo, a planilha precisa estar compartilhada como **"qualquer
-pessoa com o link"**. Se a leitura falhar, o quadro usa dados de exemplo e exibe
-um aviso de _modo demonstração_. As etapas (mover cards) são guardadas no
-**navegador** (`localStorage`); persistência entre dispositivos exige um backend
-— próximo passo natural quando o fluxo amadurecer.
+**Arquitetura:** um backend Node/Express ([`server/`](server)) lê a planilha
+(privada) com uma **conta de serviço** do Google e guarda as movimentações no
+**PostgreSQL**. O frontend ([`src/lib/candidates.ts`](src/lib/candidates.ts))
+apenas consome a API (`/api/candidates`). Sem credencial do Google, o quadro
+mostra dados de exemplo (_modo demonstração_); sem `DATABASE_URL`, as etapas ficam
+em memória.
 
-Etapas e identificadores da planilha ficam no topo de `candidates.ts`, fáceis de
-ajustar.
+O passo a passo de configuração (Railway, PostgreSQL e conta de serviço) está em
+[`DEPLOY.md`](DEPLOY.md).
 
 ---
 
 ## Stack
 
-React 18 · Vite 5 · TypeScript 5 · Tailwind CSS 3.
+**Frontend:** React 18 · Vite 5 · TypeScript 5 · Tailwind CSS 3.
+**Backend:** Node · Express · PostgreSQL · Google Sheets API.
 
 > O resultado acompanha o processo.
