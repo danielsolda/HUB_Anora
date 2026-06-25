@@ -59,9 +59,10 @@ O card aparece automaticamente, agrupado pela `category`, e já entra na busca.
 
 ### Adicionar uma categoria
 
-No mesmo arquivo, inclua um item em `categories` e use o novo `id` no campo
-`category` dos serviços. O tipo `CategoryId` em
-[`src/types.ts`](src/types.ts) também precisa do novo id.
+No mesmo arquivo, inclua um item em `categories` (com `label`, `description` e
+um `icon`) e use o novo `id` no campo `category` dos serviços. O tipo
+`CategoryId` em [`src/types.ts`](src/types.ts) também precisa do novo id. A
+categoria aparece sozinha na **sidebar**, na busca e na aba Início.
 
 ---
 
@@ -90,17 +91,35 @@ Tokens definidos em [`tailwind.config.js`](tailwind.config.js):
 
 ## Estrutura
 
+O HUB é um **app shell**: sidebar de navegação à esquerda + área de conteúdo que
+troca de view conforme a aba ativa.
+
 ```
 src/
-├── components/      # Header, Hero, ServiceCard, Footer, AnoraLogo
+├── components/
+│   ├── Sidebar.tsx        # navegação (abas) + marca
+│   ├── TopBar.tsx         # barra superior + busca
+│   ├── WelcomeOverlay.tsx # animação "Bem-vindo ao HUB"
+│   ├── ServiceCard.tsx    # card de um sistema
+│   └── AnoraLogo.tsx      # símbolo + lockup da marca
+├── views/
+│   ├── HomeView.tsx       # aba Início (central de controle)
+│   └── ServicesView.tsx   # "Todos", categoria e resultados de busca
 ├── data/
-│   └── services.ts  # ← registro de serviços e categorias (edite aqui)
+│   └── services.ts        # ← registro de serviços e categorias (edite aqui)
 ├── lib/
-│   └── icons.tsx    # ícones de linha
-├── types.ts         # tipos (Service, Category, status)
-├── App.tsx          # montagem da página + busca/filtro
-└── index.css        # estilos base + tokens
+│   └── icons.tsx          # ícones de linha
+├── navigation.ts          # abas (ViewId) + deep-link por hash da URL
+├── types.ts               # tipos (Service, Category, status)
+├── App.tsx                # app shell + troca de views
+└── index.css              # estilos base + tokens + animações
 ```
+
+### Navegação
+
+Cada aba corresponde a um `ViewId` (`inicio`, `todos` ou uma categoria) e fica
+refletida no hash da URL (ex.: `/#gestao`), então links são compartilháveis. A
+tela de boas-vindas roda uma vez por sessão e respeita `prefers-reduced-motion`.
 
 ---
 

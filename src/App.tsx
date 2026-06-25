@@ -1,144 +1,87 @@
-import { useMemo, useState } from 'react'
-import { Header } from './components/Header'
-import { Hero } from './components/Hero'
-import { ServiceCard } from './components/ServiceCard'
-import { Footer } from './components/Footer'
-import { SearchIcon } from './lib/icons'
-import { categories, services } from './data/services'
-import type { CategoryId } from './types'
+import { useCallback, useEffect, useState } from 'react'
+import { Sidebar } from './components/Sidebar'
+import { TopBar } from './components/TopBar'
+import { WelcomeOverlay } from './components/WelcomeOverlay'
+import { HomeView } from './views/HomeView'
+import { ServicesView } from './views/ServicesView'
+import type { ViewId } from './navigation'
+import { readHash, writeHash } from './navigation'
 
-type Filter = 'todos' | CategoryId
+function prefersReducedMotion() {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
+}
 
-function normalize(text: string) {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+function shouldShowIntro() {
+  try {
+    if (prefersReducedMotion()) return false
+    if (readHash() && readHash() !== 'inicio') return false
+    return sessionStorage.getItem('anora_intro_seen') !== '1'
+  } catch {
+    return true
+  }
 }
 
 export default function App() {
+  const [view, setView] = useState<ViewId>(() => readHash() ?? 'inicio')
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<Filter>('todos')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [showIntro, setShowIntro] = useState(shouldShowIntro)
 
-  const activeCount = useMemo(
-    () => services.filter((s) => s.status === 'ativo').length,
-    [],
-  )
+  // Mantém a URL (hash) em sincronia com a aba atual — permite compartilhar links.
+  useEffect(() => {
+    writeHash(view)
+  }, [view])
 
-  const filtered = useMemo(() => {
-    const q = normalize(query.trim())
-    return services.filter((service) => {
-      if (filter !== 'todos' && service.category !== filter) return false
-      if (!q) return true
-      const haystack = normalize(
-        [service.name, service.description, ...(service.keywords ?? [])].join(' '),
-      )
-      return haystack.includes(q)
-    })
-  }, [query, filter])
+  // Acompanha mudanças externas do hash (link compartilhado, edição manual).
+  useEffect(() => {
+    const onHashChange = () => {
+      const next = readHash()
+      if (next) setView(next)
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
 
-  // Categorias que têm ao menos um serviço no resultado atual.
-  const visibleCategories = categories.filter((category) =>
-    filtered.some((service) => service.category === category.id),
-  )
+  const navigate = useCallback((next: ViewId) => {
+    setView(next)
+    setQuery('')
+    setSidebarOpen(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
 
-  const filters: { id: Filter; label: string }[] = [
-    { id: 'todos', label: 'Todos' },
-    ...categories.map((c) => ({ id: c.id as Filter, label: c.label })),
-  ]
+  const searching = query.trim().length > 0
 
   return (
-    <div id="topo" className="bg-anora min-h-screen">
-      <Header />
+    <div className="min-h-screen bg-anora">
+      <Sidebar
+        activeView={view}
+        onNavigate={navigate}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
-      <main>
-        <Hero
-          activeCount={activeCount}
-          totalCount={services.length}
-          categoryCount={categories.length}
+      <div className="flex min-h-screen flex-col lg:pl-[264px]">
+        <TopBar
+          view={view}
+          query={query}
+          onQuery={setQuery}
+          onOpenMenu={() => setSidebarOpen(true)}
         />
 
-        <section id="servicos" className="mx-auto max-w-6xl px-5 pb-8 sm:px-8">
-          {/* Controles: busca + filtros por categoria */}
-          <div className="flex flex-col gap-5 border-t border-ink/10 pt-10 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative w-full lg:max-w-xs">
-              <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-ink/40" />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar sistema…"
-                aria-label="Buscar sistema"
-                className="w-full rounded-full border border-ink/15 bg-cream/70 py-2.5 pl-11 pr-4 text-sm text-ink placeholder:text-ink/40 transition-colors focus:border-terracotta/40"
-              />
-            </div>
-
-            <div id="categorias" className="flex flex-wrap gap-2">
-              {filters.map((f) => {
-                const isActive = filter === f.id
-                return (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => setFilter(f.id)}
-                    aria-pressed={isActive}
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-ink text-cream'
-                        : 'bg-cream/60 text-ink/70 ring-1 ring-ink/10 hover:bg-cream hover:text-ink'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Resultados agrupados por categoria */}
-          {visibleCategories.length > 0 ? (
-            <div className="mt-12 space-y-16">
-              {visibleCategories.map((category) => {
-                const items = filtered.filter((s) => s.category === category.id)
-                return (
-                  <div key={category.id} className="scroll-mt-24">
-                    <div className="flex items-baseline justify-between gap-4">
-                      <div>
-                        <h2 className="text-xl font-semibold text-ink">{category.label}</h2>
-                        <p className="mt-1 text-sm text-ink/55">{category.description}</p>
-                      </div>
-                      <span className="shrink-0 text-sm text-ink/40">
-                        {items.length} {items.length === 1 ? 'sistema' : 'sistemas'}
-                      </span>
-                    </div>
-                    <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                      {items.map((service) => (
-                        <ServiceCard key={service.id} service={service} />
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+        <main className="flex-1">
+          {!searching && view === 'inicio' ? (
+            <HomeView onNavigate={navigate} />
           ) : (
-            <div className="mt-16 rounded-xl2 border border-dashed border-ink/15 py-20 text-center">
-              <p className="text-ink/60">Nenhum sistema encontrado para essa busca.</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery('')
-                  setFilter('todos')
-                }}
-                className="mt-4 text-sm font-medium text-terracotta hover:underline"
-              >
-                Limpar filtros
-              </button>
-            </div>
+            <ServicesView view={view === 'inicio' ? 'todos' : view} query={query} />
           )}
-        </section>
-      </main>
+        </main>
+      </div>
 
-      <Footer />
+      {showIntro ? <WelcomeOverlay onDone={() => setShowIntro(false)} /> : null}
     </div>
   )
 }

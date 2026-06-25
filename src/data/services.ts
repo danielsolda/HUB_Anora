@@ -23,26 +23,31 @@ export const categories: Category[] = [
     id: 'analise',
     label: 'Análise',
     description: 'Dashboards e indicadores para acompanhar a evolução da clínica.',
+    icon: ChartIcon,
   },
   {
     id: 'atendimento',
     label: 'Atendimento',
     description: 'Da avaliação ao acompanhamento de cada paciente.',
+    icon: HeartPulseIcon,
   },
   {
     id: 'gestao',
     label: 'Gestão',
     description: 'Pessoas, finanças e a rotina administrativa.',
+    icon: UsersIcon,
   },
   {
     id: 'marketing',
     label: 'Marketing',
     description: 'Relacionamento e presença da marca, com critério.',
+    icon: MegaphoneIcon,
   },
   {
     id: 'operacao',
     label: 'Operação',
     description: 'Estoque, insumos e o que sustenta o dia a dia.',
+    icon: BoxIcon,
   },
 ]
 

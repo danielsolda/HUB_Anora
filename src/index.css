@@ -28,7 +28,7 @@
 }
 
 @layer utilities {
-  /* Fundo da página: creme com um leve degradê de areia no topo. */
+  /* Fundo da área de conteúdo: creme com um leve degradê de areia no topo. */
   .bg-anora {
     background-color: #f7f4e8;
     background-image:
@@ -38,5 +38,35 @@
 
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+/* ───────────────── Animação de boas-vindas ─────────────────
+   "Bem-vindo ao HUB" entra, segura um instante e sobe revelando
+   a central de controle. */
+@keyframes welcome-content {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes welcome-rise {
+  0%,
+  48% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-101%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none !important;
   }
 }

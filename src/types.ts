@@ -15,6 +15,7 @@ export type Category = {
   id: CategoryId
   label: string
   description: string
+  icon: ComponentType<SVGProps<SVGSVGElement>>
 }
 
 /** Um sistema/software desenvolvido para a clínica, exibido como card no HUB. */
