@@ -43,9 +43,26 @@ export async function initUsers() {
 
 async function seedOwner() {
   const existing = await getUserByEmail(OWNER_EMAIL)
-  if (existing) return
+  const desired = process.env.OWNER_PASSWORD
 
-  const password = process.env.OWNER_PASSWORD || randomPassword(14)
+  if (existing) {
+    // O dono já existe. Se OWNER_PASSWORD estiver definida, ela funciona como
+    // "chave de recuperação": sincroniza a senha (e reativa o acesso) a cada
+    // boot. Assim dá para recuperar o acesso mesmo após criação anterior.
+    if (desired) {
+      await updatePassword(existing.id, desired)
+      await updateUser(existing.id, { role: 'dono', active: true })
+      console.log('\n============ SENHA DO DONO SINCRONIZADA ============')
+      console.log(`  email: ${OWNER_EMAIL}`)
+      console.log('  senha: (definida via OWNER_PASSWORD)')
+      console.log('  ⚠ após entrar, REMOVA a variável OWNER_PASSWORD para que')
+      console.log('    a troca de senha pelo app não seja revertida no deploy.')
+      console.log('===================================================\n')
+    }
+    return
+  }
+
+  const password = desired || randomPassword(14)
   await insertUser({
     email: OWNER_EMAIL,
     name: OWNER_NAME,
@@ -56,7 +73,7 @@ async function seedOwner() {
 
   console.log('\n================= USUÁRIO DONO CRIADO =================')
   console.log(`  email: ${OWNER_EMAIL}`)
-  if (process.env.OWNER_PASSWORD) {
+  if (desired) {
     console.log('  senha: (definida via OWNER_PASSWORD)')
   } else {
     console.log(`  senha temporária: ${password}`)

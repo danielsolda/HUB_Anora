@@ -87,6 +87,12 @@ O acesso ao HUB exige login. Há três papéis:
 Entre com ela e troque em **Trocar senha** (no rodapé do menu). Defina também
 `JWT_SECRET` para que os logins não caiam a cada deploy.
 
+> **Recuperação de acesso.** Se o dono já existe e você não sabe a senha, defina
+> `OWNER_PASSWORD` e faça um novo deploy: a senha do dono é **sincronizada com
+> esse valor a cada boot** (e o acesso é reativado). Depois de entrar, **remova a
+> variável `OWNER_PASSWORD`** — senão a troca de senha pelo app volta atrás no
+> próximo deploy.
+
 **Recriar senha.** Cada um pode trocar a própria senha logado. O Dono redefine a
 senha de qualquer usuário na aba **Usuários** (gera uma senha nova para repassar).
 Novos usuários também são criados ali.
