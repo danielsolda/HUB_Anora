@@ -141,7 +141,7 @@ src/
 │   ├── ServicesView.tsx       # "Todos", categoria e resultados de busca
 │   ├── CategoryWorkspace.tsx  # Gestão: 2ª sidebar de módulos (Kanban etc.)
 │   ├── VideosView.tsx         # aba Vídeos
-│   ├── FinanceiroView.tsx     # aba Financeiro (dashboard, dono)
+│   ├── FinanceiroView.tsx     # aba Financeiro (dashboard, admin/financeiro)
 │   └── UsersView.tsx          # aba Usuários (gestão de acessos)
 ├── data/services.ts          # ← registro de serviços e categorias (edite aqui)
 ├── lib/
@@ -169,15 +169,19 @@ boas-vindas roda uma vez por sessão e respeita `prefers-reduced-motion`.
 
 ## Acessos e perfis
 
-O HUB exige **login**. Três papéis controlam o que cada pessoa vê:
+O HUB exige **login**. Os perfis seguem a estrutura da plataforma (módulos
+Comercial, Operações/RH, Financeiro, Documentos…):
 
-| Papel        | Acesso                                            |
-| ------------ | ------------------------------------------------- |
-| **Dono**     | tudo, incluindo a aba **Usuários**                |
-| **Gestor**   | tudo, exceto **Financeiro** e a aba **Usuários**  |
-| **Vendedor** | apenas a aba **Vídeos**                            |
+| Perfil                     | Acesso                                            |
+| -------------------------- | ------------------------------------------------- |
+| **Administrador** (Sócios) | tudo, incluindo a aba **Usuários**                |
+| **Gerente Comercial**      | **Análise** e **Auditoria** (Comercial) + Vídeos  |
+| **Gerente de Operações**   | **Gestão/Contratação** (RH) + Vídeos              |
+| **Financeiro**             | **Financeiro** + Vídeos                           |
+| **Biomédica / Assistente Comercial / Recepcionista** | apenas **Vídeos** (Documentos) |
 
-O usuário dono é criado no primeiro boot (senha nos logs ou via `OWNER_PASSWORD`).
+O Administrador é criado no primeiro boot (senha nos logs ou via `OWNER_PASSWORD`);
+papéis antigos são migrados automaticamente.
 A gestão de usuários (criar, redefinir senha, papel, ativar/remover) fica na aba
 **Usuários**, e cada um troca a própria senha pelo rodapé do menu. As regras de
 visibilidade estão em [`src/auth/access.ts`](src/auth/access.ts); os detalhes de

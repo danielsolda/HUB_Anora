@@ -70,16 +70,24 @@ Aponte o serviço para este repositório e use:
 
 ## Login e usuários
 
-O acesso ao HUB exige login. Há três papéis:
+O acesso ao HUB exige login. Os perfis seguem a estrutura da plataforma
+(módulos Comercial, Operações/RH, Financeiro, Documentos…):
 
-| Papel        | O que enxerga                                    |
-| ------------ | ------------------------------------------------ |
-| **Dono**     | tudo, incluindo a aba **Usuários**               |
-| **Gestor**   | tudo, exceto **Financeiro** e a aba **Usuários** |
-| **Vendedor** | apenas a aba **Vídeos**                          |
+| Perfil                     | O que enxerga                                    |
+| -------------------------- | ------------------------------------------------ |
+| **Administrador** (Sócios) | tudo, incluindo a aba **Usuários**               |
+| **Gerente Comercial**      | **Análise** e **Auditoria** (Comercial) + Vídeos |
+| **Gerente de Operações**   | **Gestão/Contratação** (RH) + Vídeos             |
+| **Financeiro**             | **Financeiro** + Vídeos                          |
+| **Biomédica / Assistente Comercial / Recepcionista** | apenas **Vídeos** (Documentos) |
 
-**Primeiro acesso (usuário dono).** No primeiro boot, o sistema cria o usuário
-`contatodanielsolda@gmail.com` com papel Dono. A senha:
+> A reorganização visual em módulos/submódulos (Comercial, Operações, RH &
+> Desenvolvimento, Financeiro, Jurídico, Documentos, Meu Perfil) virá numa
+> próxima etapa; a matriz de permissões acima já foi escrita pensando nela.
+
+**Primeiro acesso (Administrador).** No primeiro boot, o sistema cria o usuário
+`contatodanielsolda@gmail.com` com papel Administrador. Papéis antigos
+(`dono`/`gestor`/`vendedor`) são migrados automaticamente no boot. A senha:
 
 - se você definir `OWNER_PASSWORD`, é essa;
 - senão, é **aleatória e aparece nos logs do serviço** (Railway → Deployments →
@@ -94,9 +102,9 @@ Entre com ela e troque em **Trocar senha** (no rodapé do menu). Defina também
 > variável `OWNER_PASSWORD`** — senão a troca de senha pelo app volta atrás no
 > próximo deploy.
 
-**Recriar senha.** Cada um pode trocar a própria senha logado. O Dono redefine a
-senha de qualquer usuário na aba **Usuários** (gera uma senha nova para repassar).
-Novos usuários também são criados ali.
+**Recriar senha.** Cada um pode trocar a própria senha logado. O Administrador
+redefine a senha de qualquer usuário na aba **Usuários** (gera uma senha nova para
+repassar). Novos usuários também são criados ali.
 
 ---
 
@@ -150,18 +158,19 @@ formulário aparece como card; mover um card grava a etapa no PostgreSQL.
 | POST   | `/api/auth/login`               | login (`{ email, password }`) → token     |
 | GET    | `/api/auth/me`                  | usuário do token                          |
 | POST   | `/api/auth/change-password`     | troca a própria senha                     |
-| GET    | `/api/users`                    | lista usuários (dono)                     |
-| POST   | `/api/users`                    | cria usuário (dono)                       |
-| PATCH  | `/api/users/:id`                | papel/nome/ativo (dono)                   |
-| POST   | `/api/users/:id/reset-password` | redefine senha (dono)                     |
-| DELETE | `/api/users/:id`                | remove usuário (dono)                     |
-| GET    | `/api/stages`                  | lista as etapas do quadro (dono/gestor)    |
-| POST/PATCH/DELETE | `/api/stages…`      | cria/edita/remove etapas (dono/gestor)     |
-| PUT    | `/api/stages/order`            | reordena as etapas (dono/gestor)           |
-| GET    | `/api/audit`                   | auditoria: série mensal + linhas (dono/gestor) |
-| GET    | `/api/candidates`              | candidatos + etapa salva (dono/gestor)     |
-| PATCH  | `/api/candidates/:id/stage`    | salva a etapa de um card (dono/gestor)     |
+| GET    | `/api/users`                    | lista usuários (admin)                    |
+| POST   | `/api/users`                    | cria usuário (admin)                      |
+| PATCH  | `/api/users/:id`                | papel/nome/ativo (admin)                  |
+| POST   | `/api/users/:id/reset-password` | redefine senha (admin)                    |
+| DELETE | `/api/users/:id`                | remove usuário (admin)                    |
+| GET    | `/api/stages`                  | lista as etapas do quadro (admin/operações) |
+| POST/PATCH/DELETE | `/api/stages…`      | cria/edita/remove etapas (admin/operações) |
+| PUT    | `/api/stages/order`            | reordena as etapas (admin/operações)       |
+| GET    | `/api/audit`                   | auditoria: série mensal + linhas (admin/comercial) |
+| GET    | `/api/candidates`              | candidatos + etapa salva (admin/operações) |
+| PATCH  | `/api/candidates/:id/stage`    | salva a etapa de um card (admin/operações) |
 
 As etapas do Kanban são configuráveis (engrenagem do quadro) e ficam no banco
 (`kanban_stages`), começando com as quatro padrão.
-Papéis: `dono`, `gestor`, `vendedor`.
+Perfis: `admin`, `gerente_comercial`, `gerente_operacoes`, `financeiro`,
+`biomedica`, `assistente_comercial`, `recepcionista`.

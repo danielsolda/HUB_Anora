@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { KeyIcon, RefreshIcon, XIcon } from '../lib/icons'
 import { useAuth } from '../auth/AuthContext'
+import { ROLE_LABELS, ROLE_OPTIONS } from '../auth/access'
 import {
   ApiError,
   createUser,
@@ -12,16 +13,9 @@ import {
   type User,
 } from '../auth/api'
 
-const ROLE_LABELS: Record<Role, string> = {
-  dono: 'Dono',
-  gestor: 'Gestor',
-  vendedor: 'Vendedor',
-}
-const ROLE_OPTIONS: Role[] = ['dono', 'gestor', 'vendedor']
-
 const ERROR_MESSAGES: Record<string, string> = {
   email_taken: 'Já existe um usuário com esse e-mail.',
-  last_owner: 'Não é possível: precisa haver ao menos um Dono ativo.',
+  last_owner: 'Não é possível: precisa haver ao menos um Administrador ativo.',
   cannot_delete_self: 'Você não pode remover o próprio usuário.',
   invalid_data: 'Preencha e-mail e papel corretamente.',
 }
@@ -41,7 +35,7 @@ export function UsersView() {
   const [form, setForm] = useState<{ email: string; name: string; role: Role; password: string }>({
     email: '',
     name: '',
-    role: 'vendedor',
+    role: 'assistente_comercial',
     password: '',
   })
 
@@ -72,7 +66,7 @@ export function UsersView() {
         password: form.password || undefined,
       })
       if (generatedPassword) setCredential({ email: user.email, password: generatedPassword })
-      setForm({ email: '', name: '', role: 'vendedor', password: '' })
+      setForm({ email: '', name: '', role: 'assistente_comercial', password: '' })
       setShowCreate(false)
       load()
     } catch (err) {
@@ -302,7 +296,8 @@ export function UsersView() {
 
       <p className="mt-6 flex items-center gap-2 text-xs text-ink/40">
         <RefreshIcon className="h-3.5 w-3.5" />
-        Dono vê tudo · Gestor não vê Financeiro · Vendedor vê apenas Vídeos.
+        Administrador vê tudo · Gerentes veem seu módulo + Documentos · Colaboradores
+        veem apenas os Documentos liberados.
       </p>
     </div>
   )

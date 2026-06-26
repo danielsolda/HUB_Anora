@@ -16,7 +16,7 @@ import { services } from './data/services'
 import type { Route, ViewId } from './navigation'
 import { readRoute, writeRoute } from './navigation'
 import { useAuth } from './auth/AuthContext'
-import { canAccessView, defaultView } from './auth/access'
+import { canAccessView, defaultView, isCollaborator } from './auth/access'
 import type { User } from './auth/api'
 
 function prefersReducedMotion() {
@@ -106,9 +106,9 @@ function AppShell({ user }: { user: User }) {
   // tem cabeçalho, então a barra superior do app não aparece (sem duplicar).
   const embedViews = ['analise', 'auditoria']
   const chromeless = embedViews.includes(route.view)
-  // Busca não aparece nesses dashboards nem em Financeiro, nem para o Vendedor.
+  // Busca não aparece nesses dashboards nem em Financeiro, nem para colaboradores.
   const showSearch =
-    user.role !== 'vendedor' && !chromeless && route.view !== 'financeiro'
+    !isCollaborator(user.role) && !chromeless && route.view !== 'financeiro'
 
   function renderMain() {
     if (!canAccessView(user.role, route.view)) return null

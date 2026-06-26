@@ -2,12 +2,28 @@ import { getPool } from './db.js'
 import { hashPassword, randomPassword } from './auth.js'
 
 /**
- * Usuários e papéis (dono, gestor, vendedor).
+ * Usuários e papéis (perfis da plataforma).
  * Usa PostgreSQL quando disponível; caso contrário, um armazenamento em memória
- * (para desenvolvimento sem banco). O usuário "dono" é criado no primeiro boot.
+ * (para desenvolvimento sem banco). O Administrador é criado no primeiro boot.
  */
 
-export const ROLES = new Set(['dono', 'gestor', 'vendedor'])
+export const ADMIN_ROLE = 'admin'
+export const ROLES = new Set([
+  'admin',
+  'gerente_comercial',
+  'gerente_operacoes',
+  'financeiro',
+  'biomedica',
+  'assistente_comercial',
+  'recepcionista',
+])
+
+// Papéis antigos → novos (migração automática no boot).
+const LEGACY_ROLE_MAP = {
+  dono: 'admin',
+  gestor: 'gerente_comercial',
+  vendedor: 'assistente_comercial',
+}
 
 const OWNER_EMAIL = (process.env.OWNER_EMAIL || 'contatodanielsolda@gmail.com').toLowerCase()
 const OWNER_NAME = process.env.OWNER_NAME || 'Daniel Solda'
@@ -31,14 +47,29 @@ export async function initUsers() {
         email         text UNIQUE NOT NULL,
         name          text NOT NULL DEFAULT '',
         password_hash text NOT NULL,
-        role          text NOT NULL DEFAULT 'vendedor',
+        role          text NOT NULL DEFAULT 'assistente_comercial',
         active        boolean NOT NULL DEFAULT true,
         created_at    timestamptz NOT NULL DEFAULT now(),
         updated_at    timestamptz NOT NULL DEFAULT now()
       )
     `)
   }
+  await migrateLegacyRoles()
   await seedOwner()
+}
+
+/** Converte papéis antigos (dono/gestor/vendedor) nos novos perfis. Idempotente. */
+async function migrateLegacyRoles() {
+  const pool = getPool()
+  if (pool) {
+    for (const [from, to] of Object.entries(LEGACY_ROLE_MAP)) {
+      await pool.query('UPDATE users SET role = $1, updated_at = now() WHERE role = $2', [to, from])
+    }
+    return
+  }
+  for (const user of memUsers.values()) {
+    if (LEGACY_ROLE_MAP[user.role]) user.role = LEGACY_ROLE_MAP[user.role]
+  }
 }
 
 async function seedOwner() {
@@ -51,7 +82,7 @@ async function seedOwner() {
     // boot. Assim dá para recuperar o acesso mesmo após criação anterior.
     if (desired) {
       await updatePassword(existing.id, desired)
-      await updateUser(existing.id, { role: 'dono', active: true })
+      await updateUser(existing.id, { role: ADMIN_ROLE, active: true })
       console.log('\n============ SENHA DO DONO SINCRONIZADA ============')
       console.log(`  email: ${OWNER_EMAIL}`)
       console.log('  senha: (definida via OWNER_PASSWORD)')
@@ -66,7 +97,7 @@ async function seedOwner() {
   await insertUser({
     email: OWNER_EMAIL,
     name: OWNER_NAME,
-    role: 'dono',
+    role: ADMIN_ROLE,
     password_hash: await hashPassword(password),
     active: true,
   })
@@ -218,9 +249,9 @@ export async function countOwners() {
   const pool = getPool()
   if (pool) {
     const { rows } = await pool.query(
-      "SELECT count(*)::int AS n FROM users WHERE role = 'dono' AND active = true",
+      "SELECT count(*)::int AS n FROM users WHERE role = 'admin' AND active = true",
     )
     return rows[0].n
   }
-  return [...memUsers.values()].filter((u) => u.role === 'dono' && u.active).length
+  return [...memUsers.values()].filter((u) => u.role === 'admin' && u.active).length
 }

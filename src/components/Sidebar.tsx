@@ -16,7 +16,7 @@ import {
 import { categories, services } from '../data/services'
 import type { ViewId } from '../navigation'
 import { useAuth } from '../auth/AuthContext'
-import { canAccessView, canSeeService } from '../auth/access'
+import { canAccessView, canSeeService, ROLE_LABELS } from '../auth/access'
 import type { Role } from '../auth/api'
 
 type NavItem = {
@@ -24,12 +24,6 @@ type NavItem = {
   label: string
   icon: ComponentType<SVGProps<SVGSVGElement>>
   count?: number
-}
-
-const ROLE_LABELS: Record<Role, string> = {
-  dono: 'Dono',
-  gestor: 'Gestor',
-  vendedor: 'Vendedor',
 }
 
 function buildNav(role: Role) {

@@ -6,7 +6,14 @@
 const API_BASE = import.meta.env.VITE_API_URL ?? ''
 const TOKEN_KEY = 'anora_token'
 
-export type Role = 'dono' | 'gestor' | 'vendedor'
+export type Role =
+  | 'admin'
+  | 'gerente_comercial'
+  | 'gerente_operacoes'
+  | 'financeiro'
+  | 'biomedica'
+  | 'assistente_comercial'
+  | 'recepcionista'
 
 export type User = {
   id: number
@@ -99,7 +106,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
   })
 }
 
-// ── Usuários (dono) ──
+// ── Usuários (Administrador) ──
 export async function listUsers(): Promise<User[]> {
   return (await apiJson<{ users: User[] }>('/api/users')).users
 }

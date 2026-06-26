@@ -76,12 +76,12 @@ app.post('/api/auth/change-password', requireAuth, async (req, res) => {
   res.json({ ok: true })
 })
 
-// ── Usuários (apenas dono) ──
-app.get('/api/users', requireAuth, requireRole('dono'), async (_req, res) => {
+// ── Usuários (apenas Administrador) ──
+app.get('/api/users', requireAuth, requireRole('admin'), async (_req, res) => {
   res.json({ users: await listUsers() })
 })
 
-app.post('/api/users', requireAuth, requireRole('dono'), async (req, res) => {
+app.post('/api/users', requireAuth, requireRole('admin'), async (req, res) => {
   const { email, name, role, password } = req.body || {}
   if (!email || !ROLES.has(role)) return res.status(400).json({ error: 'invalid_data' })
   if (await getUserByEmail(String(email).toLowerCase())) {
@@ -98,14 +98,14 @@ app.post('/api/users', requireAuth, requireRole('dono'), async (req, res) => {
   res.json({ user, generatedPassword: generated ? finalPassword : undefined })
 })
 
-app.patch('/api/users/:id', requireAuth, requireRole('dono'), async (req, res) => {
+app.patch('/api/users/:id', requireAuth, requireRole('admin'), async (req, res) => {
   const id = Number(req.params.id)
   const { name, role, active } = req.body || {}
   if (role !== undefined && !ROLES.has(role)) return res.status(400).json({ error: 'invalid_role' })
   const target = await getUserById(id)
   if (!target) return res.status(404).json({ error: 'not_found' })
-  // Protege o último dono ativo de ser rebaixado/desativado.
-  const losingOwner = target.role === 'dono' && ((role && role !== 'dono') || active === false)
+  // Protege o último administrador ativo de ser rebaixado/desativado.
+  const losingOwner = target.role === 'admin' && ((role && role !== 'admin') || active === false)
   if (losingOwner && (await countOwners()) <= 1) {
     return res.status(400).json({ error: 'last_owner' })
   }
@@ -113,7 +113,7 @@ app.patch('/api/users/:id', requireAuth, requireRole('dono'), async (req, res) =
   res.json({ user: await getUserByIdPublic(id) })
 })
 
-app.post('/api/users/:id/reset-password', requireAuth, requireRole('dono'), async (req, res) => {
+app.post('/api/users/:id/reset-password', requireAuth, requireRole('admin'), async (req, res) => {
   const id = Number(req.params.id)
   const { newPassword } = req.body || {}
   const target = await getUserById(id)
@@ -124,20 +124,20 @@ app.post('/api/users/:id/reset-password', requireAuth, requireRole('dono'), asyn
   res.json({ ok: true, generatedPassword: generated ? finalPassword : undefined })
 })
 
-app.delete('/api/users/:id', requireAuth, requireRole('dono'), async (req, res) => {
+app.delete('/api/users/:id', requireAuth, requireRole('admin'), async (req, res) => {
   const id = Number(req.params.id)
   if (id === Number(req.user.id)) return res.status(400).json({ error: 'cannot_delete_self' })
   const target = await getUserById(id)
   if (!target) return res.status(404).json({ error: 'not_found' })
-  if (target.role === 'dono' && (await countOwners()) <= 1) {
+  if (target.role === 'admin' && (await countOwners()) <= 1) {
     return res.status(400).json({ error: 'last_owner' })
   }
   await deleteUser(id)
   res.json({ ok: true })
 })
 
-// ── Auditoria de leads (dono e gestor) ──
-app.get('/api/audit', requireAuth, requireRole('dono', 'gestor'), async (_req, res) => {
+// ── Auditoria de leads (Comercial) ──
+app.get('/api/audit', requireAuth, requireRole('admin', 'gerente_comercial'), async (_req, res) => {
   try {
     res.json(await getAuditData())
   } catch (error) {
@@ -146,18 +146,18 @@ app.get('/api/audit', requireAuth, requireRole('dono', 'gestor'), async (_req, r
   }
 })
 
-// ── Etapas do Kanban (dono e gestor) ──
-app.get('/api/stages', requireAuth, requireRole('dono', 'gestor'), async (_req, res) => {
+// ── Etapas do Kanban (RH & Desenvolvimento) ──
+app.get('/api/stages', requireAuth, requireRole('admin', 'gerente_operacoes'), async (_req, res) => {
   res.json({ stages: await listStages() })
 })
 
-app.post('/api/stages', requireAuth, requireRole('dono', 'gestor'), async (req, res) => {
+app.post('/api/stages', requireAuth, requireRole('admin', 'gerente_operacoes'), async (req, res) => {
   const label = String(req.body?.label || '').trim()
   if (!label) return res.status(400).json({ error: 'missing_label' })
   res.json({ stage: await createStage(label) })
 })
 
-app.patch('/api/stages/:id', requireAuth, requireRole('dono', 'gestor'), async (req, res) => {
+app.patch('/api/stages/:id', requireAuth, requireRole('admin', 'gerente_operacoes'), async (req, res) => {
   const { label, position } = req.body || {}
   await updateStage(req.params.id, {
     label: label !== undefined ? String(label).trim() : undefined,
@@ -166,22 +166,22 @@ app.patch('/api/stages/:id', requireAuth, requireRole('dono', 'gestor'), async (
   res.json({ ok: true })
 })
 
-app.put('/api/stages/order', requireAuth, requireRole('dono', 'gestor'), async (req, res) => {
+app.put('/api/stages/order', requireAuth, requireRole('admin', 'gerente_operacoes'), async (req, res) => {
   const order = req.body?.order
   if (!Array.isArray(order)) return res.status(400).json({ error: 'invalid_order' })
   await reorderStages(order)
   res.json({ ok: true })
 })
 
-app.delete('/api/stages/:id', requireAuth, requireRole('dono', 'gestor'), async (req, res) => {
+app.delete('/api/stages/:id', requireAuth, requireRole('admin', 'gerente_operacoes'), async (req, res) => {
   const stages = await listStages()
   if (stages.length <= 1) return res.status(400).json({ error: 'last_stage' })
   await deleteStage(req.params.id)
   res.json({ ok: true })
 })
 
-// ── Candidatos (dono e gestor) ──
-app.get('/api/candidates', requireAuth, requireRole('dono', 'gestor'), async (_req, res) => {
+// ── Candidatos (RH & Desenvolvimento) ──
+app.get('/api/candidates', requireAuth, requireRole('admin', 'gerente_operacoes'), async (_req, res) => {
   try {
     const [{ candidates, source }, stages] = await Promise.all([getCandidates(), getStages()])
     const merged = candidates.map((c) => (stages[c.id] ? { ...c, stage: stages[c.id] } : c))
@@ -195,7 +195,7 @@ app.get('/api/candidates', requireAuth, requireRole('dono', 'gestor'), async (_r
 app.patch(
   '/api/candidates/:id/stage',
   requireAuth,
-  requireRole('dono', 'gestor'),
+  requireRole('admin', 'gerente_operacoes'),
   async (req, res) => {
     const { id } = req.params
     const { stage } = req.body || {}
