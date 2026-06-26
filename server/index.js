@@ -4,7 +4,15 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { initDb, getStages, setStage, dbMode, dbReady } from './db.js'
 import { getCandidates, sheetMode } from './sheets.js'
-import { STAGE_IDS } from './stages.js'
+import {
+  initStages,
+  listStages,
+  createStage,
+  updateStage,
+  deleteStage,
+  reorderStages,
+  stageIds,
+} from './stages.js'
 import {
   initUsers,
   getUserByEmail,
@@ -127,6 +135,40 @@ app.delete('/api/users/:id', requireAuth, requireRole('dono'), async (req, res) 
   res.json({ ok: true })
 })
 
+// ── Etapas do Kanban (dono e gestor) ──
+app.get('/api/stages', requireAuth, requireRole('dono', 'gestor'), async (_req, res) => {
+  res.json({ stages: await listStages() })
+})
+
+app.post('/api/stages', requireAuth, requireRole('dono', 'gestor'), async (req, res) => {
+  const label = String(req.body?.label || '').trim()
+  if (!label) return res.status(400).json({ error: 'missing_label' })
+  res.json({ stage: await createStage(label) })
+})
+
+app.patch('/api/stages/:id', requireAuth, requireRole('dono', 'gestor'), async (req, res) => {
+  const { label, position } = req.body || {}
+  await updateStage(req.params.id, {
+    label: label !== undefined ? String(label).trim() : undefined,
+    position,
+  })
+  res.json({ ok: true })
+})
+
+app.put('/api/stages/order', requireAuth, requireRole('dono', 'gestor'), async (req, res) => {
+  const order = req.body?.order
+  if (!Array.isArray(order)) return res.status(400).json({ error: 'invalid_order' })
+  await reorderStages(order)
+  res.json({ ok: true })
+})
+
+app.delete('/api/stages/:id', requireAuth, requireRole('dono', 'gestor'), async (req, res) => {
+  const stages = await listStages()
+  if (stages.length <= 1) return res.status(400).json({ error: 'last_stage' })
+  await deleteStage(req.params.id)
+  res.json({ ok: true })
+})
+
 // ── Candidatos (dono e gestor) ──
 app.get('/api/candidates', requireAuth, requireRole('dono', 'gestor'), async (_req, res) => {
   try {
@@ -146,7 +188,7 @@ app.patch(
   async (req, res) => {
     const { id } = req.params
     const { stage } = req.body || {}
-    if (!STAGE_IDS.has(stage)) return res.status(400).json({ error: 'invalid_stage' })
+    if (!(await stageIds()).has(stage)) return res.status(400).json({ error: 'invalid_stage' })
     try {
       await setStage(id, stage)
       res.json({ ok: true, id, stage })
@@ -167,8 +209,9 @@ const port = process.env.PORT || 8787
 
 initDb()
   .then(() => initUsers())
+  .then(() => initStages())
   .catch((error) => {
-    console.error('[boot] falha ao inicializar banco/usuários:', error)
+    console.error('[boot] falha ao inicializar banco/usuários/etapas:', error)
   })
   .finally(() => {
     app.listen(port, () => {

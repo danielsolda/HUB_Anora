@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import { CandidateDetailModal } from './CandidateDetailModal'
 import { EmbedModal } from './EmbedModal'
-import { ExternalLinkIcon, GoogleSheetsIcon, RefreshIcon } from '../lib/icons'
+import { StageSettingsModal } from './StageSettingsModal'
+import { ExternalLinkIcon, GoogleSheetsIcon, RefreshIcon, SettingsIcon } from '../lib/icons'
 import {
+  DEFAULT_STAGES,
   FORM_URL,
   SHEET_EDIT_URL,
   SHEET_PREVIEW_URL,
-  STAGES,
   fetchCandidates,
+  fetchStages,
   saveStage,
 } from '../lib/candidates'
-import type { Candidate, StageId } from '../lib/candidates'
+import type { Candidate, Stage, StageId } from '../lib/candidates'
 
 type Status = 'loading' | 'ok' | 'error'
 
@@ -44,16 +46,27 @@ export function KanbanBoard() {
   const [dragId, setDragId] = useState<string | null>(null)
   const [overStage, setOverStage] = useState<StageId | null>(null)
   const [vagaFilter, setVagaFilter] = useState<string>('todas')
+  const [stages, setStages] = useState<Stage[]>(DEFAULT_STAGES)
+  const [showStages, setShowStages] = useState(false)
 
   async function load() {
     setStatus('loading')
     try {
-      const result = await fetchCandidates()
-      setCandidates(result.candidates)
-      setSource(result.source)
+      const [cands, stgs] = await Promise.all([fetchCandidates(), fetchStages()])
+      setCandidates(cands.candidates)
+      setSource(cands.source)
+      setStages(stgs.length ? stgs : DEFAULT_STAGES)
       setStatus('ok')
     } catch {
       setStatus('error')
+    }
+  }
+
+  async function reloadStages() {
+    try {
+      setStages(await fetchStages())
+    } catch {
+      /* mantém as etapas atuais */
     }
   }
 
@@ -107,6 +120,11 @@ export function KanbanBoard() {
   const visible =
     effectiveVaga === 'todas' ? candidates : candidates.filter((c) => c.vaga === effectiveVaga)
 
+  // Candidato cuja etapa não existe mais cai na primeira coluna.
+  const stageIdSet = new Set(stages.map((s) => s.id))
+  const firstStageId = stages[0]?.id
+  const stageOf = (c: Candidate) => (stageIdSet.has(c.stage) ? c.stage : firstStageId)
+
   return (
     <div className="flex h-full flex-col">
       {/* Cabeçalho do módulo */}
@@ -125,6 +143,15 @@ export function KanbanBoard() {
           >
             <RefreshIcon className={`h-4 w-4 ${status === 'loading' ? 'animate-spin' : ''}`} />
             Atualizar
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowStages(true)}
+            aria-label="Configurar etapas"
+            title="Configurar etapas"
+            className="inline-flex items-center justify-center rounded-full border border-ink/15 bg-cream p-2 text-ink/75 transition-colors hover:border-terracotta/40 hover:text-ink"
+          >
+            <SettingsIcon className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -227,8 +254,8 @@ export function KanbanBoard() {
           {/* Colunas */}
           <div className="flex-1 overflow-x-auto px-5 py-5 sm:px-6">
             <div className="flex gap-4">
-              {STAGES.map((stage) => {
-                const items = visible.filter((c) => c.stage === stage.id)
+              {stages.map((stage) => {
+                const items = visible.filter((c) => stageOf(c) === stage.id)
               const isOver = overStage === stage.id
               return (
                 <section
@@ -321,11 +348,20 @@ export function KanbanBoard() {
       {selected ? (
         <CandidateDetailModal
           candidate={selected}
+          stages={stages}
           onMove={(stage) => {
             move(selected.id, stage)
             setSelectedId(null)
           }}
           onClose={() => setSelectedId(null)}
+        />
+      ) : null}
+
+      {showStages ? (
+        <StageSettingsModal
+          stages={stages}
+          onChanged={reloadStages}
+          onClose={() => setShowStages(false)}
         />
       ) : null}
 

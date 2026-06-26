@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { XIcon } from '../lib/icons'
-import { STAGES } from '../lib/candidates'
-import type { Candidate, StageId } from '../lib/candidates'
+import type { Candidate, Stage, StageId } from '../lib/candidates'
 
 type CandidateDetailModalProps = {
   candidate: Candidate
+  stages: Stage[]
   onMove: (stage: StageId) => void
   onClose: () => void
 }
@@ -13,6 +13,7 @@ type CandidateDetailModalProps = {
 /** Modal com os dados preenchidos de um candidato + troca de etapa. */
 export function CandidateDetailModal({
   candidate,
+  stages,
   onMove,
   onClose,
 }: CandidateDetailModalProps) {
@@ -85,7 +86,7 @@ export function CandidateDetailModal({
             Mover para
           </p>
           <div className="flex flex-wrap gap-2">
-            {STAGES.map((stage) => {
+            {stages.map((stage) => {
               const isCurrent = stage.id === candidate.stage
               return (
                 <button

@@ -155,8 +155,12 @@ formulário aparece como card; mover um card grava a etapa no PostgreSQL.
 | PATCH  | `/api/users/:id`                | papel/nome/ativo (dono)                   |
 | POST   | `/api/users/:id/reset-password` | redefine senha (dono)                     |
 | DELETE | `/api/users/:id`                | remove usuário (dono)                     |
+| GET    | `/api/stages`                  | lista as etapas do quadro (dono/gestor)    |
+| POST/PATCH/DELETE | `/api/stages…`      | cria/edita/remove etapas (dono/gestor)     |
+| PUT    | `/api/stages/order`            | reordena as etapas (dono/gestor)           |
 | GET    | `/api/candidates`              | candidatos + etapa salva (dono/gestor)     |
 | PATCH  | `/api/candidates/:id/stage`    | salva a etapa de um card (dono/gestor)     |
 
-Etapas válidas: `novo`, `entrevista`, `entrevistado`, `experiencia`.
+As etapas do Kanban são configuráveis (engrenagem do quadro) e ficam no banco
+(`kanban_stages`), começando com as quatro padrão.
 Papéis: `dono`, `gestor`, `vendedor`.

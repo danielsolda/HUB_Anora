@@ -15,12 +15,13 @@ export const FORM_URL =
 export const SHEET_EDIT_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`
 export const SHEET_PREVIEW_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/preview`
 
-// ── Etapas do Kanban ──
-export type StageId = 'novo' | 'entrevista' | 'entrevistado' | 'experiencia'
+// ── Etapas do Kanban (configuráveis pelo backend) ──
+export type StageId = string
 
-export type Stage = { id: StageId; label: string }
+export type Stage = { id: StageId; label: string; position?: number }
 
-export const STAGES: Stage[] = [
+/** Padrão usado como fallback até o backend responder. */
+export const DEFAULT_STAGES: Stage[] = [
   { id: 'novo', label: 'Novo Candidato' },
   { id: 'entrevista', label: 'Marcando entrevista' },
   { id: 'entrevistado', label: 'Entrevistado' },
@@ -57,6 +58,42 @@ export async function saveStage(id: string, stage: StageId): Promise<void> {
   const res = await apiFetch(`/api/candidates/${encodeURIComponent(id)}/stage`, {
     method: 'PATCH',
     body: JSON.stringify({ stage }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+// ── Configuração das etapas ──
+export async function fetchStages(): Promise<Stage[]> {
+  const res = await apiFetch('/api/stages')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return ((await res.json()) as { stages: Stage[] }).stages
+}
+
+export async function createStage(label: string): Promise<void> {
+  const res = await apiFetch('/api/stages', {
+    method: 'POST',
+    body: JSON.stringify({ label }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function updateStage(id: string, label: string): Promise<void> {
+  const res = await apiFetch(`/api/stages/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ label }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function deleteStage(id: string): Promise<void> {
+  const res = await apiFetch(`/api/stages/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+export async function reorderStages(order: string[]): Promise<void> {
+  const res = await apiFetch('/api/stages/order', {
+    method: 'PUT',
+    body: JSON.stringify({ order }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
 }
