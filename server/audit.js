@@ -99,7 +99,9 @@ export async function getAuditData() {
     const months = results
       .map((r) => ({ mes: r.name, total: r.rows.length }))
       .filter((m) => m.total > 0)
-    const rows = results.flatMap((r) => r.rows)
+    // Marca cada linha com o mês de origem (__mes) para os gráficos de evolução
+    // por pessoa. A chave __mes não colide com os cabeçalhos da planilha.
+    const rows = results.flatMap((r) => r.rows.map((row) => ({ ...row, __mes: r.name })))
     const headers = results.find((r) => r.headers.length)?.headers ?? []
     if (rows.length === 0) throw new Error('vazio')
     const data = { months, rows, headers, source: 'live' }
@@ -115,6 +117,7 @@ const SAMPLE_HEADERS = ['NOME DA CLIENTE', 'CIDADE', 'RESPONSÁVEL', 'DOUTORA']
 const _resp = ['Grupo Silva', 'Bruna', 'Helenice', 'Gabriela', 'Virginia']
 const _dout = ['Eduarda', 'Susana', 'Isabela']
 const _cid = ['Belo Horizonte', 'São Paulo', 'Santos', 'Rio de Janeiro']
+const _meses = ['Fevereiro', 'Março', 'Abril', 'Maio', 'Junho']
 const SAMPLE = {
   source: 'sample',
   headers: SAMPLE_HEADERS,
@@ -130,5 +133,6 @@ const SAMPLE = {
     CIDADE: _cid[i % _cid.length],
     RESPONSÁVEL: _resp[i % _resp.length],
     DOUTORA: _dout[i % _dout.length],
+    __mes: _meses[i % _meses.length],
   })),
 }

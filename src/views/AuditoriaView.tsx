@@ -24,19 +24,41 @@ function shortMonth(mes: string): string {
   return titleCase(mes).slice(0, 3)
 }
 
+function norm(text: string): string {
+  return text.toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
 function countByRegex(rows: Record<string, string>[], re: RegExp): { label: string; value: number }[] {
   const map = new Map<string, number>()
   for (const row of rows) {
-    const key = Object.keys(row).find((k) => re.test(k))
+    const key = Object.keys(row).find((k) => k !== '__mes' && re.test(k))
     if (!key) continue
     const raw = (row[key] || '').trim()
     if (!raw) continue
-    const norm = raw.toLowerCase().replace(/\s+/g, ' ').trim()
-    map.set(norm, (map.get(norm) || 0) + 1)
+    map.set(norm(raw), (map.get(norm(raw)) || 0) + 1)
   }
   return [...map.entries()]
     .map(([k, v]) => ({ label: titleCase(k), value: v }))
     .sort((a, b) => b.value - a.value)
+}
+
+/** Série mensal (uma a uma, na ordem das abas) de agendamentos de UMA pessoa. */
+function personMonthlySeries(
+  rows: Record<string, string>[],
+  re: RegExp,
+  person: string,
+  months: { mes: string; total: number }[],
+): { label: string; value: number }[] {
+  const target = norm(person)
+  const counts = new Map<string, number>()
+  for (const row of rows) {
+    const key = Object.keys(row).find((k) => k !== '__mes' && re.test(k))
+    if (!key) continue
+    if (norm(row[key] || '') !== target) continue
+    const mes = row.__mes || ''
+    counts.set(mes, (counts.get(mes) || 0) + 1)
+  }
+  return months.map((m) => ({ label: shortMonth(m.mes), value: counts.get(m.mes) || 0 }))
 }
 
 function LineChart({ data }: { data: { label: string; value: number }[] }) {
@@ -116,11 +138,59 @@ function BarChart({ title, data }: { title: string; data: { label: string; value
   )
 }
 
+function EvolutionCard({
+  title,
+  options,
+  selected,
+  onSelect,
+  series,
+}: {
+  title: string
+  options: { label: string; value: number }[]
+  selected: string
+  onSelect: (v: string) => void
+  series: { label: string; value: number }[]
+}) {
+  const total = series.reduce((s, d) => s + d.value, 0)
+  return (
+    <div className="rounded-xl2 border border-ink/10 bg-cream p-5 shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-ink">{title}</h3>
+          <p className="mt-0.5 text-xs text-ink/45">
+            {selected ? `${total} agendamento${total === 1 ? '' : 's'} no período` : 'Sem dados'}
+          </p>
+        </div>
+        <select
+          value={selected}
+          onChange={(e) => onSelect(e.target.value)}
+          className="max-w-[60%] rounded-full border border-ink/15 bg-linen/40 px-3 py-1.5 text-sm font-medium text-ink/80 outline-none transition-colors hover:border-terracotta/40 focus:border-terracotta/60"
+        >
+          {options.length === 0 ? (
+            <option value="">—</option>
+          ) : (
+            options.map((p) => (
+              <option key={p.label} value={p.label}>
+                {p.label} ({p.value})
+              </option>
+            ))
+          )}
+        </select>
+      </div>
+      <div className="mt-3">
+        <LineChart data={series} />
+      </div>
+    </div>
+  )
+}
+
 export function AuditoriaView({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const [mode, setMode] = useState<Mode>('graficos')
   const [data, setData] = useState<AuditData | null>(null)
   const [status, setStatus] = useState<Status>('loading')
   const [reloadKey, setReloadKey] = useState(0)
+  const [selResp, setSelResp] = useState('')
+  const [selDoutora, setSelDoutora] = useState('')
 
   async function load() {
     setStatus('loading')
@@ -144,8 +214,16 @@ export function AuditoriaView({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const months = data?.months ?? []
   const rows = data?.rows ?? []
   const evolucao = months.map((m) => ({ label: shortMonth(m.mes), value: m.total }))
-  const porResponsavel = countByRegex(rows, /respons/i)
-  const porDoutora = countByRegex(rows, /doutor|m[eé]dic/i)
+  const respRe = /respons/i
+  const doutoraRe = /doutor|m[eé]dic/i
+  const porResponsavel = countByRegex(rows, respRe)
+  const porDoutora = countByRegex(rows, doutoraRe)
+
+  // Pessoa selecionada nos gráficos de evolução (padrão: a de maior volume).
+  const respAtivo = selResp || porResponsavel[0]?.label || ''
+  const doutoraAtiva = selDoutora || porDoutora[0]?.label || ''
+  const evolResp = personMonthlySeries(rows, respRe, respAtivo, months)
+  const evolDoutora = personMonthlySeries(rows, doutoraRe, doutoraAtiva, months)
 
   const total = months.reduce((s, m) => s + m.total, 0) || rows.length
   const ultimo = months[months.length - 1]
@@ -257,6 +335,23 @@ export function AuditoriaView({ onOpenMenu }: { onOpenMenu?: () => void }) {
                   <div className="mt-3">
                     <LineChart data={evolucao} />
                   </div>
+                </div>
+
+                <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                  <EvolutionCard
+                    title="Evolução por responsável"
+                    options={porResponsavel}
+                    selected={respAtivo}
+                    onSelect={setSelResp}
+                    series={evolResp}
+                  />
+                  <EvolutionCard
+                    title="Evolução por doutora"
+                    options={porDoutora}
+                    selected={doutoraAtiva}
+                    onSelect={setSelDoutora}
+                    series={evolDoutora}
+                  />
                 </div>
 
                 <div className="mt-5 grid gap-4 lg:grid-cols-2">
