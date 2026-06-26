@@ -1,12 +1,9 @@
 import type { Category, Service } from '../types'
 import {
-  CalendarIcon,
   ChartIcon,
   ClipboardIcon,
   DashboardIcon,
   GoogleSheetsIcon,
-  HeartPulseIcon,
-  StethoscopeIcon,
   UserPlusIcon,
   UsersIcon,
   WalletIcon,
@@ -25,10 +22,10 @@ export const categories: Category[] = [
     icon: ChartIcon,
   },
   {
-    id: 'atendimento',
-    label: 'Atendimento',
-    description: 'Da avaliação ao acompanhamento de cada paciente.',
-    icon: HeartPulseIcon,
+    id: 'auditoria',
+    label: 'Auditoria',
+    description: 'Auditoria de leads agendados e atendimentos.',
+    icon: ClipboardIcon,
   },
   {
     id: 'gestao',
@@ -65,44 +62,16 @@ export const services: Service[] = [
     keywords: ['crm', 'kommo', 'funil', 'conversão', 'vendas', 'indicadores'],
   },
   {
-    id: 'agendamento',
-    name: 'Agenda',
-    description:
-      'Agendamentos, confirmações e a rotina de horários da equipe em um só lugar.',
-    category: 'atendimento',
-    status: 'em-breve',
-    icon: CalendarIcon,
-    keywords: ['agenda', 'horários', 'consultas', 'marcação'],
-  },
-  {
-    id: 'avaliacao',
-    name: 'Ficha de Avaliação',
-    description:
-      'Cada atendimento começa com uma avaliação. Registre o ponto de partida de cada paciente.',
-    category: 'atendimento',
-    status: 'em-breve',
+    id: 'auditoria-leads',
+    name: 'Auditoria de Leads',
+    description: 'Auditoria de leads agendados, comparecimentos e atendimentos.',
+    category: 'auditoria',
+    status: 'ativo',
+    href: '#auditoria',
+    embedUrl:
+      'https://docs.google.com/spreadsheets/d/1JHIF4-epoArSNfgTpdvdy6VeelXHPIdGvGnbI3-XdEs/preview?gid=1358253473',
     icon: ClipboardIcon,
-    keywords: ['avaliação', 'anamnese', 'ficha', 'protocolo'],
-  },
-  {
-    id: 'acompanhamento',
-    name: 'Acompanhamento',
-    description:
-      'O registro da evolução ao longo do processo — fotos, sessões e notas de condução.',
-    category: 'atendimento',
-    status: 'em-breve',
-    icon: HeartPulseIcon,
-    keywords: ['evolução', 'sessões', 'progresso', 'condução'],
-  },
-  {
-    id: 'prontuario',
-    name: 'Prontuário',
-    description:
-      'Histórico clínico de cada paciente, reunido com organização e segurança.',
-    category: 'atendimento',
-    status: 'em-breve',
-    icon: StethoscopeIcon,
-    keywords: ['prontuário', 'histórico', 'clínico'],
+    keywords: ['auditoria', 'leads', 'agendados', 'planilha', 'atendimento'],
   },
   {
     id: 'contratacao',

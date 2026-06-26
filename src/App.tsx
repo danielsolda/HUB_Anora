@@ -101,12 +101,13 @@ function AppShell({ user }: { user: User }) {
   }, [user.role, route.view, navigate])
 
   const searching = query.trim().length > 0
-  // Análise é "chromeless": o próprio dashboard já tem cabeçalho, então a barra
-  // superior do app não aparece (evita o cabeçalho duplicado).
-  const chromeless = route.view === 'analise'
-  // Busca não aparece em dashboards (Análise/Financeiro) nem para o Vendedor.
+  // Views que embutem um dashboard/planilha em tela cheia: o próprio conteúdo já
+  // tem cabeçalho, então a barra superior do app não aparece (sem duplicar).
+  const embedViews = ['analise', 'auditoria']
+  const chromeless = embedViews.includes(route.view)
+  // Busca não aparece nesses dashboards nem em Financeiro, nem para o Vendedor.
   const showSearch =
-    user.role !== 'vendedor' && route.view !== 'analise' && route.view !== 'financeiro'
+    user.role !== 'vendedor' && !chromeless && route.view !== 'financeiro'
 
   function renderMain() {
     if (!canAccessView(user.role, route.view)) return null
@@ -115,10 +116,10 @@ function AppShell({ user }: { user: User }) {
     if (route.view === 'videos') return <VideosView />
     if (route.view === 'financeiro') return <FinanceiroView />
     if (route.view === 'usuarios') return <UsersView />
-    if (route.view === 'analise') {
-      // Análise abre direto o preview do dashboard (sem 2ª sidebar).
+    if (route.view === 'analise' || route.view === 'auditoria') {
+      // Abre direto o dashboard/planilha embutido (sem 2ª sidebar).
       const dash = services.find(
-        (s) => s.category === 'analise' && s.status === 'ativo' && s.embedUrl,
+        (s) => s.category === route.view && s.status === 'ativo' && s.embedUrl,
       )
       return dash?.embedUrl ? (
         <DashboardEmbed

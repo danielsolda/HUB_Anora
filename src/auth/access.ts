@@ -12,7 +12,7 @@ const VIEW_ROLES: Record<ViewId, Role[]> = {
   inicio: ['dono', 'gestor'],
   todos: ['dono', 'gestor'],
   analise: ['dono', 'gestor'],
-  atendimento: ['dono', 'gestor'],
+  auditoria: ['dono', 'gestor'],
   gestao: ['dono', 'gestor'],
   videos: ['dono', 'gestor', 'vendedor'],
   financeiro: ['dono'],
