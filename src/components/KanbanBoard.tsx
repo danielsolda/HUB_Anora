@@ -20,13 +20,12 @@ function pickField(candidate: Candidate, re: RegExp): string {
 }
 
 function previewOf(candidate: Candidate): string[] {
+  // A vaga já aparece como selo; aqui mostramos contato + cidade.
   const out: string[] = []
-  const role = pickField(candidate, /vaga|cargo|fun[cç]/i)
   const phone = pickField(candidate, /tele|whats|fone|cel/i)
   const city = pickField(candidate, /cidade|local/i)
-  if (role) out.push(role)
   if (phone) out.push(phone)
-  else if (city) out.push(city)
+  if (city) out.push(city)
   return out
 }
 
@@ -60,6 +59,22 @@ export function KanbanBoard() {
 
   useEffect(() => {
     load()
+  }, [])
+
+  // Atualização silenciosa: novos candidatos entram sozinhos (a cada 60s,
+  // só com a aba visível, sem mostrar o "carregando").
+  useEffect(() => {
+    const id = window.setInterval(async () => {
+      if (document.hidden) return
+      try {
+        const result = await fetchCandidates()
+        setCandidates(result.candidates)
+        setSource(result.source)
+      } catch {
+        /* mantém o que já está na tela */
+      }
+    }, 60000)
+    return () => window.clearInterval(id)
   }, [])
 
   function move(id: string, stage: StageId) {
