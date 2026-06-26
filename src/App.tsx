@@ -49,7 +49,26 @@ function AppShell({ user }: { user: User }) {
   const [route, setRoute] = useState<Route>(() => readRoute() ?? { view: 'inicio', module: null })
   const [query, setQuery] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('anora_sidebar_collapsed') === '1'
+    } catch {
+      return false
+    }
+  })
   const [showIntro, setShowIntro] = useState(() => shouldShowIntro(user.role))
+
+  const toggleCollapse = useCallback(() => {
+    setCollapsed((v) => {
+      const next = !v
+      try {
+        localStorage.setItem('anora_sidebar_collapsed', next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     writeRoute(route)
@@ -83,6 +102,9 @@ function AppShell({ user }: { user: User }) {
   }, [user.role, route.view, navigate])
 
   const searching = query.trim().length > 0
+  // Busca não aparece em dashboards (Análise/Financeiro) nem para o Vendedor.
+  const showSearch =
+    user.role !== 'vendedor' && route.view !== 'analise' && route.view !== 'financeiro'
 
   function renderMain() {
     if (!canAccessView(user.role, route.view)) return null
@@ -123,15 +145,21 @@ function AppShell({ user }: { user: User }) {
         onNavigate={(view) => navigate(view)}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        collapsed={collapsed}
+        onToggleCollapse={toggleCollapse}
       />
 
-      <div className="flex min-h-screen flex-col lg:pl-[264px]">
+      <div
+        className={`flex min-h-screen flex-col transition-all duration-300 ${
+          collapsed ? 'lg:pl-[76px]' : 'lg:pl-[264px]'
+        }`}
+      >
         <TopBar
           view={route.view}
           query={query}
           onQuery={setQuery}
           onOpenMenu={() => setSidebarOpen(true)}
-          showSearch={user.role !== 'vendedor'}
+          showSearch={showSearch}
         />
 
         <main className="flex-1">{renderMain()}</main>
