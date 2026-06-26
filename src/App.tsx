@@ -9,6 +9,7 @@ import { ServicesView } from './views/ServicesView'
 import { CategoryWorkspace } from './views/CategoryWorkspace'
 import { VideosView } from './views/VideosView'
 import { FinanceiroView } from './views/FinanceiroView'
+import { AuditoriaView } from './views/AuditoriaView'
 import { UsersView } from './views/UsersView'
 import { DashboardEmbed } from './components/DashboardEmbed'
 import { services } from './data/services'
@@ -116,10 +117,13 @@ function AppShell({ user }: { user: User }) {
     if (route.view === 'videos') return <VideosView />
     if (route.view === 'financeiro') return <FinanceiroView />
     if (route.view === 'usuarios') return <UsersView />
-    if (route.view === 'analise' || route.view === 'auditoria') {
-      // Abre direto o dashboard/planilha embutido (sem 2ª sidebar).
+    if (route.view === 'auditoria') {
+      return <AuditoriaView onOpenMenu={() => setSidebarOpen(true)} />
+    }
+    if (route.view === 'analise') {
+      // Abre direto o dashboard embutido (sem 2ª sidebar).
       const dash = services.find(
-        (s) => s.category === route.view && s.status === 'ativo' && s.embedUrl,
+        (s) => s.category === 'analise' && s.status === 'ativo' && s.embedUrl,
       )
       return dash?.embedUrl ? (
         <DashboardEmbed

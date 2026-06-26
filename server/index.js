@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { initDb, getStages, setStage, dbMode, dbReady } from './db.js'
 import { getCandidates, sheetMode } from './sheets.js'
+import { getAuditData } from './audit.js'
 import {
   initStages,
   listStages,
@@ -133,6 +134,16 @@ app.delete('/api/users/:id', requireAuth, requireRole('dono'), async (req, res) 
   }
   await deleteUser(id)
   res.json({ ok: true })
+})
+
+// ── Auditoria de leads (dono e gestor) ──
+app.get('/api/audit', requireAuth, requireRole('dono', 'gestor'), async (_req, res) => {
+  try {
+    res.json(await getAuditData())
+  } catch (error) {
+    console.error('[api] erro na auditoria:', error)
+    res.status(502).json({ error: 'fetch_failed' })
+  }
 })
 
 // ── Etapas do Kanban (dono e gestor) ──

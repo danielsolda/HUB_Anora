@@ -9,6 +9,7 @@ import {
   WalletIcon,
 } from '../lib/icons'
 import { SHEET_EDIT_URL, SHEET_PREVIEW_URL } from '../lib/candidates'
+import { AUDIT_EMBED_URL } from '../lib/audit'
 
 /**
  * Categorias usadas para organizar os serviços do HUB.
@@ -68,8 +69,7 @@ export const services: Service[] = [
     category: 'auditoria',
     status: 'ativo',
     href: '#auditoria',
-    embedUrl:
-      'https://docs.google.com/spreadsheets/d/1JHIF4-epoArSNfgTpdvdy6VeelXHPIdGvGnbI3-XdEs/preview?gid=1358253473',
+    embedUrl: AUDIT_EMBED_URL,
     icon: ClipboardIcon,
     keywords: ['auditoria', 'leads', 'agendados', 'planilha', 'atendimento'],
   },
