@@ -102,6 +102,9 @@ function AppShell({ user }: { user: User }) {
   }, [user.role, route.view, navigate])
 
   const searching = query.trim().length > 0
+  // Análise é "chromeless": o próprio dashboard já tem cabeçalho, então a barra
+  // superior do app não aparece (evita o cabeçalho duplicado).
+  const chromeless = route.view === 'analise'
   // Busca não aparece em dashboards (Análise/Financeiro) nem para o Vendedor.
   const showSearch =
     user.role !== 'vendedor' && route.view !== 'analise' && route.view !== 'financeiro'
@@ -119,7 +122,12 @@ function AppShell({ user }: { user: User }) {
         (s) => s.category === 'analise' && s.status === 'ativo' && s.embedUrl,
       )
       return dash?.embedUrl ? (
-        <DashboardEmbed title={dash.name} src={dash.embedUrl} />
+        <DashboardEmbed
+          title={dash.name}
+          src={dash.embedUrl}
+          onOpenMenu={() => setSidebarOpen(true)}
+          fullHeight
+        />
       ) : (
         <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center text-sm text-ink/50">
           Nenhum dashboard disponível.
@@ -154,13 +162,15 @@ function AppShell({ user }: { user: User }) {
           collapsed ? 'lg:pl-[76px]' : 'lg:pl-[264px]'
         }`}
       >
-        <TopBar
-          view={route.view}
-          query={query}
-          onQuery={setQuery}
-          onOpenMenu={() => setSidebarOpen(true)}
-          showSearch={showSearch}
-        />
+        {chromeless ? null : (
+          <TopBar
+            view={route.view}
+            query={query}
+            onQuery={setQuery}
+            onOpenMenu={() => setSidebarOpen(true)}
+            showSearch={showSearch}
+          />
+        )}
 
         <main className="flex-1">{renderMain()}</main>
       </div>

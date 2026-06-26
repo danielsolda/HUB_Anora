@@ -1,10 +1,14 @@
 import { useState } from 'react'
-import { ExternalLinkIcon, RefreshIcon } from '../lib/icons'
+import { ExternalLinkIcon, MenuIcon, RefreshIcon } from '../lib/icons'
 
 type DashboardEmbedProps = {
   title: string
   /** URL embutida (iframe). */
   src: string
+  /** Abre o menu lateral no mobile (quando esta view não tem barra superior). */
+  onOpenMenu?: () => void
+  /** Ocupa a altura toda da viewport (quando renderizada sem barra superior). */
+  fullHeight?: boolean
 }
 
 /**
@@ -12,7 +16,7 @@ type DashboardEmbedProps = {
  * conteúdo — sem modal. Tem um cabeçalho com atualizar e abrir em nova aba
  * (fallback caso o sistema não permita ser embutido).
  */
-export function DashboardEmbed({ title, src }: DashboardEmbedProps) {
+export function DashboardEmbed({ title, src, onOpenMenu, fullHeight }: DashboardEmbedProps) {
   const [loaded, setLoaded] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
 
@@ -22,9 +26,25 @@ export function DashboardEmbed({ title, src }: DashboardEmbedProps) {
   }
 
   return (
-    <div className="flex h-full min-h-[calc(100vh-4rem)] flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-5 py-3 sm:px-6">
-        <h1 className="text-base font-semibold text-ink">{title}</h1>
+    <div
+      className={`flex h-full flex-col ${
+        fullHeight ? 'min-h-screen' : 'min-h-[calc(100vh-4rem)]'
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-1.5">
+          {onOpenMenu ? (
+            <button
+              type="button"
+              onClick={onOpenMenu}
+              aria-label="Abrir menu"
+              className="-ml-1 rounded-lg p-2 text-ink/70 transition-colors hover:bg-ink/5 hover:text-ink lg:hidden"
+            >
+              <MenuIcon className="h-5 w-5" />
+            </button>
+          ) : null}
+          <h1 className="text-base font-semibold text-ink">{title}</h1>
+        </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
