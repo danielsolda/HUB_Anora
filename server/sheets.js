@@ -1,15 +1,15 @@
 import { JWT } from 'google-auth-library'
 
 /**
- * Leitura da planilha de respostas (privada) no servidor, via conta de serviço.
+ * Leitura da planilha de respostas (privada) no servidor.
  *
- * Configuração por variáveis de ambiente:
- *   - GOOGLE_SERVICE_ACCOUNT_JSON: o JSON da conta de serviço (texto ou base64).
- *   - SHEET_ID: id da planilha (default abaixo).
- *   - SHEET_TAB: nome da aba (opcional; default = primeira aba).
+ * Dois modos (nesta ordem de preferência):
+ *   1. APPS_SCRIPT_URL  — endpoint de um Google Apps Script publicado na própria
+ *      planilha (mais simples). Lê todas as abas e devolve a vaga de cada card.
+ *      Use APPS_SCRIPT_TOKEN como segredo compartilhado.
+ *   2. GOOGLE_SERVICE_ACCOUNT_JSON — conta de serviço + Sheets API.
  *
- * A planilha deve ser compartilhada (Leitor) com o e-mail da conta de serviço.
- * Sem credenciais, retornamos dados de exemplo (modo demonstração).
+ * Sem nenhum dos dois, retornamos dados de exemplo (modo demonstração).
  */
 
 const DEFAULT_SHEET_ID = '1U6_a-W2dZAgWRzwXCNr3KRLbl7ygJrE21S-8LiMncD0'
@@ -30,7 +30,8 @@ function getCredentials() {
   }
 }
 
-export const sheetMode = getCredentials() ? 'live' : 'sample'
+export const sheetMode =
+  process.env.APPS_SCRIPT_URL || getCredentials() ? 'live' : 'sample'
 
 function normalize(text) {
   return String(text)
@@ -60,13 +61,8 @@ function makeId(seed, index) {
   return slug || `cand-${index}`
 }
 
-function rowToCandidate(headers, cells, index) {
-  const fields = {}
-  headers.forEach((header, i) => {
-    const value = (cells[i] ?? '').toString().trim()
-    if (header) fields[header] = value
-  })
-
+/** Monta um candidato a partir dos campos preenchidos + a vaga. */
+function buildCandidate(fields, vaga, index) {
   const name =
     pick(fields, /nome|name/i) ||
     Object.entries(fields).find(
@@ -77,11 +73,43 @@ function rowToCandidate(headers, cells, index) {
   const email = pick(fields, /e-?mail/i)
   const timestamp = pick(fields, /carimbo|timestamp|data\s*\/?\s*hora|data e hora/i)
   const stage = stageFromText(pick(fields, /etapa|fase|status|stage/i)) ?? 'novo'
-  const id = makeId(email || `${name}-${timestamp}`, index)
+  const id = makeId([vaga, email || `${name}-${timestamp}`].filter(Boolean).join('-'), index)
 
-  return { id, name, stage, timestamp: timestamp || undefined, fields }
+  return { id, name, stage, timestamp: timestamp || undefined, vaga: vaga || undefined, fields }
 }
 
+function rowToCandidate(headers, cells, vaga, index) {
+  const fields = {}
+  headers.forEach((header, i) => {
+    const value = (cells[i] ?? '').toString().trim()
+    if (header) fields[header] = value
+  })
+  return buildCandidate(fields, vaga, index)
+}
+
+// ── Modo 1: Google Apps Script ──
+async function getFromAppsScript() {
+  const base = process.env.APPS_SCRIPT_URL
+  const token = process.env.APPS_SCRIPT_TOKEN || ''
+  const sep = base.includes('?') ? '&' : '?'
+  const url = `${base}${sep}token=${encodeURIComponent(token)}`
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 10000)
+  const res = await fetch(url, { redirect: 'follow', signal: controller.signal }).finally(() =>
+    clearTimeout(timer),
+  )
+  if (!res.ok) throw new Error(`Apps Script HTTP ${res.status}`)
+  const data = await res.json()
+  if (data.error) throw new Error(`Apps Script: ${data.error}`)
+
+  const candidates = (data.candidates || []).map((c, i) =>
+    buildCandidate(c.fields || {}, c.vaga, i),
+  )
+  return { candidates, source: 'live' }
+}
+
+// ── Modo 2: conta de serviço (Sheets API) ──
 async function fetchJson(url, token) {
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
   if (!res.ok) {
@@ -91,13 +119,7 @@ async function fetchJson(url, token) {
   return res.json()
 }
 
-/** Lê os candidatos da planilha; cai para exemplos se não houver credencial. */
-export async function getCandidates() {
-  const creds = getCredentials()
-  if (!creds) {
-    return { candidates: SAMPLE_CANDIDATES, source: 'sample' }
-  }
-
+async function getFromServiceAccount(creds) {
   const sheetId = process.env.SHEET_ID || DEFAULT_SHEET_ID
   const jwt = new JWT({ email: creds.client_email, key: creds.private_key, scopes: SCOPES })
   const { token } = await jwt.getAccessToken()
@@ -111,32 +133,42 @@ export async function getCandidates() {
     tab = meta.sheets?.[0]?.properties?.title || 'Sheet1'
   }
 
-  const range = encodeURIComponent(tab)
   const data = await fetchJson(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(tab)}`,
     token,
   )
-
   const rows = (data.values || []).filter((r) => r.some((c) => String(c).trim() !== ''))
   if (rows.length < 2) return { candidates: [], source: 'live' }
 
   const headers = rows[0].map((h) => String(h).trim())
-  const candidates = rows.slice(1).map((r, i) => rowToCandidate(headers, r, i))
+  const candidates = rows.slice(1).map((r, i) => rowToCandidate(headers, r, tab, i))
   return { candidates, source: 'live' }
 }
 
-// Dados de exemplo (quando não há credencial configurada).
+/** Lê os candidatos; cai para exemplos se nada estiver configurado. */
+export async function getCandidates() {
+  if (process.env.APPS_SCRIPT_URL) {
+    return getFromAppsScript()
+  }
+  const creds = getCredentials()
+  if (creds) {
+    return getFromServiceAccount(creds)
+  }
+  return { candidates: SAMPLE_CANDIDATES, source: 'sample' }
+}
+
+// Dados de exemplo (quando nada está configurado).
 const SAMPLE_CANDIDATES = [
   {
     id: 'ana-souza',
     name: 'Ana Souza',
     stage: 'novo',
+    vaga: 'Assistente',
     timestamp: '24/06/2026 09:12',
     fields: {
       'Nome completo': 'Ana Souza',
       'E-mail': 'ana.souza@email.com',
       'Telefone / WhatsApp': '(11) 99876-5432',
-      'Vaga de interesse': 'Esteticista',
       Cidade: 'São Paulo',
     },
   },
@@ -144,12 +176,12 @@ const SAMPLE_CANDIDATES = [
     id: 'beatriz-lima',
     name: 'Beatriz Lima',
     stage: 'novo',
+    vaga: 'Gestora Comercial',
     timestamp: '24/06/2026 14:40',
     fields: {
       'Nome completo': 'Beatriz Lima',
       'E-mail': 'bia.lima@email.com',
       'Telefone / WhatsApp': '(11) 98123-4567',
-      'Vaga de interesse': 'Recepcionista',
       Cidade: 'Guarulhos',
     },
   },
@@ -157,12 +189,12 @@ const SAMPLE_CANDIDATES = [
     id: 'carla-mendes',
     name: 'Carla Mendes',
     stage: 'entrevista',
+    vaga: 'Gestora Comercial',
     timestamp: '23/06/2026 11:05',
     fields: {
       'Nome completo': 'Carla Mendes',
       'E-mail': 'carla.mendes@email.com',
       'Telefone / WhatsApp': '(11) 99090-1122',
-      'Vaga de interesse': 'Biomédica esteta',
       Cidade: 'São Paulo',
     },
   },
@@ -170,12 +202,12 @@ const SAMPLE_CANDIDATES = [
     id: 'elaine-castro',
     name: 'Elaine Castro',
     stage: 'entrevistado',
+    vaga: 'Gestora Comercial',
     timestamp: '20/06/2026 10:30',
     fields: {
       'Nome completo': 'Elaine Castro',
       'E-mail': 'elaine.castro@email.com',
       'Telefone / WhatsApp': '(11) 97777-3344',
-      'Vaga de interesse': 'Gerente de clínica',
       Cidade: 'São Paulo',
     },
   },
@@ -183,12 +215,12 @@ const SAMPLE_CANDIDATES = [
     id: 'fernanda-alves',
     name: 'Fernanda Alves',
     stage: 'experiencia',
+    vaga: 'Assistente',
     timestamp: '02/06/2026 08:00',
     fields: {
       'Nome completo': 'Fernanda Alves',
       'E-mail': 'fe.alves@email.com',
       'Telefone / WhatsApp': '(11) 96543-2211',
-      'Vaga de interesse': 'Esteticista',
       Cidade: 'São Paulo',
     },
   },

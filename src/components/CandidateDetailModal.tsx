@@ -48,9 +48,16 @@ export function CandidateDetailModal({
         <header className="flex items-start justify-between gap-3 border-b border-ink/10 px-5 py-4">
           <div className="min-w-0">
             <h2 className="truncate text-lg font-semibold text-ink">{candidate.name}</h2>
-            {candidate.timestamp ? (
-              <p className="mt-0.5 text-xs text-ink/50">Chegou em {candidate.timestamp}</p>
-            ) : null}
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {candidate.vaga ? (
+                <span className="rounded-full bg-linen/70 px-2 py-0.5 text-xs font-medium text-mauve">
+                  {candidate.vaga}
+                </span>
+              ) : null}
+              {candidate.timestamp ? (
+                <span className="text-xs text-ink/50">Chegou em {candidate.timestamp}</span>
+              ) : null}
+            </div>
           </div>
           <button
             type="button"

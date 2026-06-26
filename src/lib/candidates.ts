@@ -31,6 +31,8 @@ export type Candidate = {
   id: string
   name: string
   stage: StageId
+  /** Vaga a que a pessoa se candidatou (aba de origem na planilha). */
+  vaga?: string
   /** Data/hora de chegada (carimbo do formulário), se houver. */
   timestamp?: string
   /** Todos os campos preenchidos: rótulo da coluna → valor. */

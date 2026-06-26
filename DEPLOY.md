@@ -57,7 +57,8 @@ Aponte o serviço para este repositório e use:
 | ----------------------------- | ------------------------------------------------ |
 | `DATABASE_URL`                | injetada pelo plugin PostgreSQL                  |
 | `JWT_SECRET`                  | segredo longo p/ assinar logins (defina!)        |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | o JSON da conta de serviço (ver abaixo)          |
+| `APPS_SCRIPT_URL` / `_TOKEN`  | ler a planilha via Apps Script (opção A, abaixo) |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | ler a planilha via conta de serviço (opção B)    |
 | `OWNER_PASSWORD`              | (opcional) senha inicial do dono                 |
 | `SHEET_ID` / `SHEET_TAB`      | (opcional) planilha/aba a ler                    |
 
@@ -99,10 +100,29 @@ Novos usuários também são criados ali.
 
 ---
 
-## Ler a planilha privada (conta de serviço)
+## Ler a planilha privada
 
-Como a planilha é **particular**, o servidor precisa de uma identidade do Google
-com permissão de leitura. Isso é feito uma vez:
+Como a planilha é **particular**, o servidor precisa de permissão para lê-la. Há
+dois caminhos — escolha **um**.
+
+### Opção A — Google Apps Script (mais simples)
+
+1. Abra a planilha → **Extensões → Apps Script**.
+2. Cole o conteúdo de [`docs/google-apps-script.gs`](docs/google-apps-script.gs)
+   e troque o `TOKEN` por um texto secreto.
+3. **Implantar → Nova implantação → App da Web** (executar como: você; acesso:
+   qualquer pessoa). Copie a URL que termina em `/exec`.
+4. No Railway, defina `APPS_SCRIPT_URL` (a URL) e `APPS_SCRIPT_TOKEN` (o mesmo
+   token do script).
+
+O script lê **todas as abas** e marca a **vaga** de cada candidato pelo nome da
+aba (ajustável no `VAGA_POR_ABA`). A planilha continua privada (o script roda
+como você).
+
+### Opção B — Conta de serviço (Sheets API)
+
+Outra forma: criar uma identidade do Google com permissão de leitura. Feito uma
+vez:
 
 1. Acesse [console.cloud.google.com](https://console.cloud.google.com) e crie (ou
    selecione) um projeto.

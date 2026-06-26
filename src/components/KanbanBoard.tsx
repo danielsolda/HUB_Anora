@@ -44,6 +44,7 @@ export function KanbanBoard() {
   const [showSheet, setShowSheet] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overStage, setOverStage] = useState<StageId | null>(null)
+  const [vagaFilter, setVagaFilter] = useState<string>('todas')
 
   async function load() {
     setStatus('loading')
@@ -83,6 +84,13 @@ export function KanbanBoard() {
   }
 
   const selected = candidates.find((c) => c.id === selectedId) ?? null
+
+  // Vagas presentes (abas da planilha) + filtro.
+  const vagas = Array.from(new Set(candidates.map((c) => c.vaga).filter(Boolean))) as string[]
+  const effectiveVaga =
+    vagaFilter !== 'todas' && vagas.includes(vagaFilter) ? vagaFilter : 'todas'
+  const visible =
+    effectiveVaga === 'todas' ? candidates : candidates.filter((c) => c.vaga === effectiveVaga)
 
   return (
     <div className="flex h-full flex-col">
@@ -168,11 +176,44 @@ export function KanbanBoard() {
           </div>
         </div>
       ) : (
-        /* Colunas */
-        <div className="flex-1 overflow-x-auto px-5 py-5 sm:px-6">
-          <div className="flex gap-4">
-            {STAGES.map((stage) => {
-              const items = candidates.filter((c) => c.stage === stage.id)
+        <div className="flex flex-1 flex-col">
+          {/* Filtro por vaga (abas da planilha) */}
+          {vagas.length > 1 ? (
+            <div className="flex flex-wrap items-center gap-2 px-5 pt-4 sm:px-6">
+              <span className="text-xs font-medium uppercase tracking-wide text-ink/40">
+                Vaga
+              </span>
+              {['todas', ...vagas].map((v) => {
+                const isActive = effectiveVaga === v
+                const count =
+                  v === 'todas'
+                    ? candidates.length
+                    : candidates.filter((c) => c.vaga === v).length
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setVagaFilter(v)}
+                    aria-pressed={isActive}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-ink text-cream'
+                        : 'bg-cream text-ink/70 ring-1 ring-ink/10 hover:text-ink'
+                    }`}
+                  >
+                    {v === 'todas' ? 'Todas' : v}
+                    <span className={isActive ? 'text-cream/70' : 'text-ink/35'}>{count}</span>
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+
+          {/* Colunas */}
+          <div className="flex-1 overflow-x-auto px-5 py-5 sm:px-6">
+            <div className="flex gap-4">
+              {STAGES.map((stage) => {
+                const items = visible.filter((c) => c.stage === stage.id)
               const isOver = overStage === stage.id
               return (
                 <section
@@ -245,6 +286,11 @@ export function KanbanBoard() {
                               ) : null}
                             </span>
                           </div>
+                          {effectiveVaga === 'todas' && candidate.vaga ? (
+                            <span className="mt-2 inline-block rounded-full bg-linen/70 px-2 py-0.5 text-[0.65rem] font-medium text-mauve">
+                              {candidate.vaga}
+                            </span>
+                          ) : null}
                         </button>
                       ))
                     )}
@@ -252,6 +298,7 @@ export function KanbanBoard() {
                 </section>
               )
             })}
+            </div>
           </div>
         </div>
       )}
