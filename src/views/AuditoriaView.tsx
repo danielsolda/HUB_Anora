@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChartIcon,
   ExternalLinkIcon,
@@ -10,6 +10,18 @@ import { AUDIT_EMBED_URL, fetchAudit, type AuditData } from '../lib/audit'
 
 type Mode = 'graficos' | 'planilha'
 type Status = 'loading' | 'ok' | 'error'
+
+/** Cor da linha principal (à frente) e paleta das linhas de comparação (atrás). */
+const FRONT_COLOR = '#894b36'
+const COMPARE_COLORS = ['#6b7a4f', '#b07d9e', '#c79a4b', '#5b8aa6', '#a8615a', '#8a7bb0']
+
+type Line = {
+  key: string
+  label: string
+  color: string
+  front?: boolean
+  values: number[]
+}
 
 function titleCase(text: string): string {
   return text
@@ -42,23 +54,165 @@ function countByRegex(rows: Record<string, string>[], re: RegExp): { label: stri
     .sort((a, b) => b.value - a.value)
 }
 
-/** Série mensal (uma a uma, na ordem das abas) de agendamentos de UMA pessoa. */
-function personMonthlySeries(
+/**
+ * Mapa pessoa → série mensal (uma posição por mês, na ordem das abas). Construído
+ * uma vez por carga para os gráficos de evolução por pessoa.
+ */
+function buildSeriesMap(
   rows: Record<string, string>[],
   re: RegExp,
-  person: string,
   months: { mes: string; total: number }[],
-): { label: string; value: number }[] {
-  const target = norm(person)
-  const counts = new Map<string, number>()
+): Map<string, number[]> {
+  const idx = new Map(months.map((m, i) => [m.mes, i]))
+  const map = new Map<string, number[]>()
   for (const row of rows) {
     const key = Object.keys(row).find((k) => k !== '__mes' && re.test(k))
     if (!key) continue
-    if (norm(row[key] || '') !== target) continue
-    const mes = row.__mes || ''
-    counts.set(mes, (counts.get(mes) || 0) + 1)
+    const raw = (row[key] || '').trim()
+    if (!raw) continue
+    const mi = idx.get(row.__mes || '')
+    if (mi == null) continue
+    const label = titleCase(norm(raw))
+    let arr = map.get(label)
+    if (!arr) {
+      arr = months.map(() => 0)
+      map.set(label, arr)
+    }
+    arr[mi] += 1
   }
-  return months.map((m) => ({ label: shortMonth(m.mes), value: counts.get(m.mes) || 0 }))
+  return map
+}
+
+function lineSignature(lines: Line[]): string {
+  return lines.map((l) => `${l.key}:${l.values.join(',')}`).join('|')
+}
+
+/**
+ * Anima (tween) as linhas de um valor ao outro sempre que mudam: troca de pessoa
+ * ou inclusão/remoção de comparações. Interpola o eixo Y por requestAnimationFrame
+ * com easing suave; linhas novas crescem a partir da base.
+ */
+function useTweenedLines(target: Line[], duration = 520): Line[] {
+  const [render, setRender] = useState<Line[]>(target)
+  const renderRef = useRef<Line[]>(target)
+  renderRef.current = render
+  const sig = lineSignature(target)
+
+  useEffect(() => {
+    const fromMap = new Map(renderRef.current.map((l) => [l.key, l.values]))
+    let raf = 0
+    const start = performance.now()
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3)
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration)
+      const e = ease(t)
+      setRender(
+        target.map((l) => {
+          const fromVals = fromMap.get(l.key)
+          const values = l.values.map((v, i) => {
+            const f = fromVals?.[i] ?? 0
+            return f + (v - f) * e
+          })
+          return { ...l, values }
+        }),
+      )
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig, duration])
+
+  return render
+}
+
+/** Gráfico de linha do mês a mês, com a principal à frente e comparações atrás. */
+function MultiLineChart({ lines, months }: { lines: Line[]; months: string[] }) {
+  const n = months.length
+  const hasData = n > 0 && lines.some((l) => l.values.length > 0)
+  if (!hasData) {
+    return <p className="py-10 text-center text-sm text-ink/40">Sem dados</p>
+  }
+  const W = 760
+  const H = 280
+  const padX = 40
+  const padTop = 28
+  const padBottom = 34
+  const innerW = W - padX * 2
+  const innerH = H - padTop - padBottom
+  const max = Math.max(1, ...lines.flatMap((l) => l.values))
+  const x = (i: number) => (n === 1 ? padX + innerW / 2 : padX + (i * innerW) / (n - 1))
+  const y = (v: number) => padTop + innerH - (v / max) * innerH
+  const pts = (l: Line) => l.values.map((v, i) => `${x(i)},${y(v)}`).join(' ')
+  const front = lines.find((l) => l.front)
+  const behind = lines.filter((l) => !l.front)
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Evolução por período">
+      {[0, 0.5, 1].map((t) => {
+        const gy = padTop + innerH - t * innerH
+        return <line key={t} x1={padX} x2={W - padX} y1={gy} y2={gy} stroke="rgba(31,33,23,0.08)" />
+      })}
+
+      {front && front.values.length > 0 ? (
+        <polygon
+          points={`${x(0)},${padTop + innerH} ${pts(front)} ${x(n - 1)},${padTop + innerH}`}
+          fill="rgba(137,75,54,0.10)"
+        />
+      ) : null}
+
+      {behind.map((l) => (
+        <g key={l.key}>
+          <polyline
+            points={pts(l)}
+            fill="none"
+            stroke={l.color}
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            opacity="0.9"
+          />
+          {l.values.map((v, i) => (
+            <circle key={i} cx={x(i)} cy={y(v)} r="2.5" fill={l.color} />
+          ))}
+        </g>
+      ))}
+
+      {front ? (
+        <g>
+          <polyline
+            points={pts(front)}
+            fill="none"
+            stroke={front.color}
+            strokeWidth="2.5"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          {front.values.map((v, i) => (
+            <g key={i}>
+              <circle cx={x(i)} cy={y(v)} r="3.5" fill={front.color} />
+              <text
+                x={x(i)}
+                y={y(v) - 10}
+                textAnchor="middle"
+                fontSize="12"
+                fontWeight="600"
+                fill="#1f2117"
+              >
+                {Math.round(v)}
+              </text>
+            </g>
+          ))}
+        </g>
+      ) : null}
+
+      {months.map((label, i) => (
+        <text key={i} x={x(i)} y={H - 12} textAnchor="middle" fontSize="11" fill="rgba(31,33,23,0.6)">
+          {label}
+        </text>
+      ))}
+    </svg>
+  )
 }
 
 function LineChart({ data }: { data: { label: string; value: number }[] }) {
@@ -138,38 +292,79 @@ function BarChart({ title, data }: { title: string; data: { label: string; value
   )
 }
 
+/**
+ * Card de evolução por pessoa: seletor da principal (anima ao trocar) + chips para
+ * comparar outras pessoas (linhas atrás) e legenda.
+ */
 function EvolutionCard({
   title,
-  options,
-  selected,
-  onSelect,
-  series,
+  people,
+  monthLabels,
+  seriesFor,
 }: {
   title: string
-  options: { label: string; value: number }[]
-  selected: string
-  onSelect: (v: string) => void
-  series: { label: string; value: number }[]
+  people: { label: string; value: number }[]
+  monthLabels: string[]
+  seriesFor: (label: string) => number[]
 }) {
-  const total = series.reduce((s, d) => s + d.value, 0)
+  const [primary, setPrimary] = useState('')
+  const [compare, setCompare] = useState<string[]>([])
+
+  const primaryLabel =
+    primary && people.some((p) => p.label === primary) ? primary : people[0]?.label || ''
+  const others = people.filter((p) => p.label !== primaryLabel)
+
+  const frontLine: Line = {
+    key: 'front',
+    label: primaryLabel,
+    color: FRONT_COLOR,
+    front: true,
+    values: primaryLabel ? seriesFor(primaryLabel) : [],
+  }
+  const compareLines: Line[] = compare
+    .filter((label) => label !== primaryLabel && people.some((p) => p.label === label))
+    .map((label, i) => ({
+      key: label,
+      label,
+      color: COMPARE_COLORS[i % COMPARE_COLORS.length],
+      values: seriesFor(label),
+    }))
+
+  const tweened = useTweenedLines([...compareLines, frontLine])
+
+  const legend = [frontLine, ...compareLines].map((l) => ({
+    label: l.label,
+    color: l.color,
+    total: l.values.reduce((s, v) => s + v, 0),
+  }))
+  const comparing = compareLines.length > 0
+
+  function toggle(label: string) {
+    setCompare((c) => (c.includes(label) ? c.filter((x) => x !== label) : [...c, label]))
+  }
+
   return (
     <div className="rounded-xl2 border border-ink/10 bg-cream p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-ink">{title}</h3>
           <p className="mt-0.5 text-xs text-ink/45">
-            {selected ? `${total} agendamento${total === 1 ? '' : 's'} no período` : 'Sem dados'}
+            {comparing
+              ? `Comparando ${compareLines.length + 1} pessoas`
+              : primaryLabel
+                ? `${legend[0].total} agendamento${legend[0].total === 1 ? '' : 's'} no período`
+                : 'Sem dados'}
           </p>
         </div>
         <select
-          value={selected}
-          onChange={(e) => onSelect(e.target.value)}
+          value={primaryLabel}
+          onChange={(e) => setPrimary(e.target.value)}
           className="max-w-[60%] rounded-full border border-ink/15 bg-linen/40 px-3 py-1.5 text-sm font-medium text-ink/80 outline-none transition-colors hover:border-terracotta/40 focus:border-terracotta/60"
         >
-          {options.length === 0 ? (
+          {people.length === 0 ? (
             <option value="">—</option>
           ) : (
-            options.map((p) => (
+            people.map((p) => (
               <option key={p.label} value={p.label}>
                 {p.label} ({p.value})
               </option>
@@ -177,9 +372,58 @@ function EvolutionCard({
           )}
         </select>
       </div>
+
       <div className="mt-3">
-        <LineChart data={series} />
+        <MultiLineChart lines={tweened} months={monthLabels} />
       </div>
+
+      {comparing ? (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
+          {legend.map((it) => (
+            <span key={it.label} className="inline-flex items-center gap-1.5 text-xs text-ink/65">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: it.color }} />
+              {it.label}
+              <span className="tabular-nums text-ink/40">{it.total}</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {others.length > 0 ? (
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-ink/5 pt-3">
+          <span className="text-xs font-medium text-ink/45">Comparar:</span>
+          {others.map((p) => {
+            const on = compare.includes(p.label)
+            const color = compareLines.find((l) => l.label === p.label)?.color
+            return (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => toggle(p.label)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  on
+                    ? 'border-terracotta/40 bg-terracotta/10 text-ink'
+                    : 'border-ink/15 bg-cream text-ink/60 hover:border-terracotta/40 hover:text-ink'
+                }`}
+              >
+                {on && color ? (
+                  <span className="h-2 w-2 rounded-full" style={{ background: color }} />
+                ) : null}
+                {p.label}
+              </button>
+            )
+          })}
+          {comparing ? (
+            <button
+              type="button"
+              onClick={() => setCompare([])}
+              className="ml-1 text-xs font-medium text-ink/40 underline-offset-2 hover:text-ink/70 hover:underline"
+            >
+              limpar
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -189,8 +433,6 @@ export function AuditoriaView({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const [data, setData] = useState<AuditData | null>(null)
   const [status, setStatus] = useState<Status>('loading')
   const [reloadKey, setReloadKey] = useState(0)
-  const [selResp, setSelResp] = useState('')
-  const [selDoutora, setSelDoutora] = useState('')
 
   async function load() {
     setStatus('loading')
@@ -218,12 +460,21 @@ export function AuditoriaView({ onOpenMenu }: { onOpenMenu?: () => void }) {
   const doutoraRe = /doutor|m[eé]dic/i
   const porResponsavel = countByRegex(rows, respRe)
   const porDoutora = countByRegex(rows, doutoraRe)
+  const monthLabels = months.map((m) => shortMonth(m.mes))
 
-  // Pessoa selecionada nos gráficos de evolução (padrão: a de maior volume).
-  const respAtivo = selResp || porResponsavel[0]?.label || ''
-  const doutoraAtiva = selDoutora || porDoutora[0]?.label || ''
-  const evolResp = personMonthlySeries(rows, respRe, respAtivo, months)
-  const evolDoutora = personMonthlySeries(rows, doutoraRe, doutoraAtiva, months)
+  // Séries mensais por pessoa (memoizadas por carga) para os gráficos de evolução.
+  const respSeriesMap = useMemo(
+    () => buildSeriesMap(rows, respRe, months),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data],
+  )
+  const doutoraSeriesMap = useMemo(
+    () => buildSeriesMap(rows, doutoraRe, months),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data],
+  )
+  const seriesForResp = (label: string) => respSeriesMap.get(label) ?? months.map(() => 0)
+  const seriesForDoutora = (label: string) => doutoraSeriesMap.get(label) ?? months.map(() => 0)
 
   const total = months.reduce((s, m) => s + m.total, 0) || rows.length
   const ultimo = months[months.length - 1]
@@ -340,17 +591,15 @@ export function AuditoriaView({ onOpenMenu }: { onOpenMenu?: () => void }) {
                 <div className="mt-5 grid gap-4 lg:grid-cols-2">
                   <EvolutionCard
                     title="Evolução por responsável"
-                    options={porResponsavel}
-                    selected={respAtivo}
-                    onSelect={setSelResp}
-                    series={evolResp}
+                    people={porResponsavel}
+                    monthLabels={monthLabels}
+                    seriesFor={seriesForResp}
                   />
                   <EvolutionCard
                     title="Evolução por doutora"
-                    options={porDoutora}
-                    selected={doutoraAtiva}
-                    onSelect={setSelDoutora}
-                    series={evolDoutora}
+                    people={porDoutora}
+                    monthLabels={monthLabels}
+                    seriesFor={seriesForDoutora}
                   />
                 </div>
 
