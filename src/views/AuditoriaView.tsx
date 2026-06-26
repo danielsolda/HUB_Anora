@@ -11,24 +11,24 @@ import { AUDIT_EMBED_URL, fetchAudit, type AuditData } from '../lib/audit'
 type Mode = 'graficos' | 'planilha'
 type Status = 'loading' | 'ok' | 'error'
 
-const BAR_COLORS = ['#3f4429', '#894b36', '#937265']
-
 function titleCase(text: string): string {
   return text
+    .toLowerCase()
     .split(' ')
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ')
 }
 
-function findKey(headers: string[], re: RegExp): string | undefined {
-  return headers.find((h) => re.test(h))
+function shortMonth(mes: string): string {
+  return titleCase(mes).slice(0, 3)
 }
 
-function countBy(rows: Record<string, string>[], key: string | undefined): { label: string; value: number }[] {
-  if (!key) return []
+function countByRegex(rows: Record<string, string>[], re: RegExp): { label: string; value: number }[] {
   const map = new Map<string, number>()
   for (const row of rows) {
+    const key = Object.keys(row).find((k) => re.test(k))
+    if (!key) continue
     const raw = (row[key] || '').trim()
     if (!raw) continue
     const norm = raw.toLowerCase().replace(/\s+/g, ' ').trim()
@@ -39,15 +39,55 @@ function countBy(rows: Record<string, string>[], key: string | undefined): { lab
     .sort((a, b) => b.value - a.value)
 }
 
-function BarChart({
-  title,
-  data,
-  color,
-}: {
-  title: string
-  data: { label: string; value: number }[]
-  color: string
-}) {
+function LineChart({ data }: { data: { label: string; value: number }[] }) {
+  if (data.length === 0) {
+    return <p className="py-10 text-center text-sm text-ink/40">Sem dados</p>
+  }
+  const W = 760
+  const H = 280
+  const padX = 40
+  const padTop = 28
+  const padBottom = 34
+  const innerW = W - padX * 2
+  const innerH = H - padTop - padBottom
+  const max = Math.max(1, ...data.map((d) => d.value))
+  const n = data.length
+  const x = (i: number) => (n === 1 ? padX + innerW / 2 : padX + (i * innerW) / (n - 1))
+  const y = (v: number) => padTop + innerH - (v / max) * innerH
+  const line = data.map((d, i) => `${x(i)},${y(d.value)}`).join(' ')
+  const area = `${x(0)},${padTop + innerH} ${line} ${x(n - 1)},${padTop + innerH}`
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Evolução mensal">
+      {[0, 0.5, 1].map((t) => {
+        const gy = padTop + innerH - t * innerH
+        return <line key={t} x1={padX} x2={W - padX} y1={gy} y2={gy} stroke="rgba(31,33,23,0.08)" />
+      })}
+      <polygon points={area} fill="rgba(137,75,54,0.10)" />
+      <polyline
+        points={line}
+        fill="none"
+        stroke="#894b36"
+        strokeWidth="2.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      {data.map((d, i) => (
+        <g key={d.label}>
+          <circle cx={x(i)} cy={y(d.value)} r="3.5" fill="#894b36" />
+          <text x={x(i)} y={y(d.value) - 10} textAnchor="middle" fontSize="12" fontWeight="600" fill="#1f2117">
+            {d.value}
+          </text>
+          <text x={x(i)} y={H - 12} textAnchor="middle" fontSize="11" fill="rgba(31,33,23,0.6)">
+            {d.label}
+          </text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+function BarChart({ title, data }: { title: string; data: { label: string; value: number }[] }) {
   const max = Math.max(1, ...data.map((d) => d.value))
   return (
     <div className="rounded-xl2 border border-ink/10 bg-cream p-5 shadow-card">
@@ -64,8 +104,8 @@ function BarChart({
               </div>
               <div className="mt-1 h-2 rounded-full bg-linen/70">
                 <div
-                  className="h-2 rounded-full transition-[width] duration-500"
-                  style={{ width: `${(d.value / max) * 100}%`, backgroundColor: color }}
+                  className="h-2 rounded-full bg-olive transition-[width] duration-500"
+                  style={{ width: `${(d.value / max) * 100}%` }}
                 />
               </div>
             </li>
@@ -101,22 +141,23 @@ export function AuditoriaView({ onOpenMenu }: { onOpenMenu?: () => void }) {
     else load()
   }
 
-  const headers = data?.headers ?? []
+  const months = data?.months ?? []
   const rows = data?.rows ?? []
-  const porResponsavel = countBy(rows, findKey(headers, /respons/i))
-  const porDoutora = countBy(rows, findKey(headers, /doutor|m[eé]dic/i))
-  const porCidade = countBy(rows, findKey(headers, /cidade|local/i)).slice(0, 8)
+  const evolucao = months.map((m) => ({ label: shortMonth(m.mes), value: m.total }))
+  const porResponsavel = countByRegex(rows, /respons/i)
+  const porDoutora = countByRegex(rows, /doutor|m[eé]dic/i)
 
+  const total = months.reduce((s, m) => s + m.total, 0) || rows.length
+  const ultimo = months[months.length - 1]
   const kpis = [
-    { value: rows.length, label: 'Agendamentos' },
-    { value: porResponsavel.length, label: 'Responsáveis' },
-    { value: porDoutora.length, label: 'Doutoras' },
-    { value: countBy(rows, findKey(headers, /cidade|local/i)).length, label: 'Cidades' },
+    { value: total, label: 'Agendamentos' },
+    { value: months.length, label: 'Meses' },
+    { value: months.length ? Math.round(total / months.length) : 0, label: 'Média/mês' },
+    { value: ultimo?.total ?? 0, label: ultimo ? titleCase(ultimo.mes) : 'Último mês' },
   ]
 
   return (
     <div className="flex h-full min-h-screen flex-col">
-      {/* Cabeçalho */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-4 py-3 sm:px-6">
         <div className="flex items-center gap-1.5">
           {onOpenMenu ? (
@@ -170,7 +211,6 @@ export function AuditoriaView({ onOpenMenu }: { onOpenMenu?: () => void }) {
         </div>
       </div>
 
-      {/* Conteúdo */}
       {mode === 'planilha' ? (
         <div className="relative flex-1 bg-linen/20">
           <iframe
@@ -210,10 +250,18 @@ export function AuditoriaView({ onOpenMenu }: { onOpenMenu?: () => void }) {
                   ))}
                 </div>
 
+                <div className="mt-5 rounded-xl2 border border-ink/10 bg-cream p-5 shadow-card">
+                  <h3 className="text-sm font-semibold text-ink">
+                    Evolução mensal de agendamentos
+                  </h3>
+                  <div className="mt-3">
+                    <LineChart data={evolucao} />
+                  </div>
+                </div>
+
                 <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                  <BarChart title="Agendamentos por responsável" data={porResponsavel} color={BAR_COLORS[0]} />
-                  <BarChart title="Agendamentos por doutora" data={porDoutora} color={BAR_COLORS[1]} />
-                  <BarChart title="Agendamentos por cidade (top 8)" data={porCidade} color={BAR_COLORS[2]} />
+                  <BarChart title="Por responsável (total)" data={porResponsavel} />
+                  <BarChart title="Por doutora (total)" data={porDoutora} />
                 </div>
               </>
             )}

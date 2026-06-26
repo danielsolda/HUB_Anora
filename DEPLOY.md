@@ -158,6 +158,7 @@ formulário aparece como card; mover um card grava a etapa no PostgreSQL.
 | GET    | `/api/stages`                  | lista as etapas do quadro (dono/gestor)    |
 | POST/PATCH/DELETE | `/api/stages…`      | cria/edita/remove etapas (dono/gestor)     |
 | PUT    | `/api/stages/order`            | reordena as etapas (dono/gestor)           |
+| GET    | `/api/audit`                   | auditoria: série mensal + linhas (dono/gestor) |
 | GET    | `/api/candidates`              | candidatos + etapa salva (dono/gestor)     |
 | PATCH  | `/api/candidates/:id/stage`    | salva a etapa de um card (dono/gestor)     |
 

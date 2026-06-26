@@ -8,6 +8,8 @@ export const AUDIT_EMBED_URL = `https://docs.google.com/spreadsheets/d/${AUDIT_S
 export type AuditData = {
   headers: string[]
   rows: Record<string, string>[]
+  /** Total de agendamentos por mês (uma aba por mês), em ordem. */
+  months: { mes: string; total: number }[]
   source: 'live' | 'sample'
 }
 
