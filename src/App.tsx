@@ -26,12 +26,11 @@ function prefersReducedMotion() {
   }
 }
 
-function shouldShowIntro(role: User['role']) {
+function shouldShowIntro() {
+  // Toca a cada carregamento da página / login (respeitando quem prefere
+  // menos animação).
   try {
-    if (role === 'vendedor' || prefersReducedMotion()) return false
-    const route = readRoute()
-    if (route && route.view !== 'inicio') return false
-    return sessionStorage.getItem('anora_intro_seen') !== '1'
+    return !prefersReducedMotion()
   } catch {
     return true
   }
@@ -56,7 +55,7 @@ function AppShell({ user }: { user: User }) {
       return false
     }
   })
-  const [showIntro, setShowIntro] = useState(() => shouldShowIntro(user.role))
+  const [showIntro, setShowIntro] = useState(shouldShowIntro)
 
   const toggleCollapse = useCallback(() => {
     setCollapsed((v) => {

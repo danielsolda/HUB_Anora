@@ -8,11 +8,6 @@ import { AnoraMark } from './AnoraLogo'
  */
 export function WelcomeOverlay({ onDone }: { onDone: () => void }) {
   useEffect(() => {
-    try {
-      sessionStorage.setItem('anora_intro_seen', '1')
-    } catch {
-      /* sessionStorage indisponível — segue sem persistir */
-    }
     const timer = window.setTimeout(onDone, 2500)
     return () => window.clearTimeout(timer)
   }, [onDone])
