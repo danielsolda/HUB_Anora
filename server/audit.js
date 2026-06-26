@@ -113,10 +113,12 @@ export async function getAuditData() {
 }
 
 // Dados de exemplo (estrutura real, valores fictícios).
-const SAMPLE_HEADERS = ['NOME DA CLIENTE', 'CIDADE', 'RESPONSÁVEL', 'DOUTORA']
+const SAMPLE_HEADERS = ['NOME DA CLIENTE', 'CIDADE', 'DATA DO AGENDAMENTO', 'RESPONSÁVEL', 'DOUTORA']
 const _resp = ['Grupo Silva', 'Bruna', 'Helenice', 'Gabriela', 'Virginia']
 const _dout = ['Eduarda', 'Susana', 'Isabela']
-const _cid = ['Belo Horizonte', 'São Paulo', 'Santos', 'Rio de Janeiro']
+const _cid = ['Belo Horizonte', 'São Paulo', 'Santos', 'Rio de Janeiro', 'Goiânia', 'Curitiba', 'Campinas']
+// Datas variadas (2026), com quinta-feira mais frequente — só para demonstração.
+const _datas = ['05/02/2026', '12/02/2026', '19/02/2026', '02/02/2026', '04/02/2026', '06/02/2026', '03/02/2026', '07/02/2026']
 const _meses = ['Fevereiro', 'Março', 'Abril', 'Maio', 'Junho']
 const SAMPLE = {
   source: 'sample',
@@ -131,6 +133,7 @@ const SAMPLE = {
   rows: Array.from({ length: 24 }, (_, i) => ({
     'NOME DA CLIENTE': `Cliente Exemplo ${i + 1}`,
     CIDADE: _cid[i % _cid.length],
+    'DATA DO AGENDAMENTO': _datas[i % _datas.length],
     RESPONSÁVEL: _resp[i % _resp.length],
     DOUTORA: _dout[i % _dout.length],
     __mes: _meses[i % _meses.length],
