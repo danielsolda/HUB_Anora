@@ -36,6 +36,35 @@ function initials(name: string): string {
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?'
 }
 
+/** Converte o carimbo do formulário (ex.: "24/06/2026 09:12") em epoch (ms). */
+function parseTs(ts?: string): number {
+  if (!ts) return 0
+  const m = ts.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/)
+  if (m) {
+    let year = +m[3]
+    if (year < 100) year += 2000
+    const t = Date.UTC(year, +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0))
+    return Number.isNaN(t) ? 0 : t
+  }
+  const t = Date.parse(ts)
+  return Number.isNaN(t) ? 0 : t
+}
+
+// Mais novos primeiro; sem carimbo vão para o fim (mantém ordem estável).
+function byNewest(a: Candidate, b: Candidate): number {
+  return parseTs(b.timestamp) - parseTs(a.timestamp)
+}
+
+// Cards já abertos (vistos) ficam guardados por dispositivo, para o selo "Novo".
+const SEEN_KEY = 'anora_recrutamento_seen'
+function loadSeen(): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]') as string[])
+  } catch {
+    return new Set()
+  }
+}
+
 export function KanbanBoard() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [status, setStatus] = useState<Status>('loading')
@@ -48,6 +77,21 @@ export function KanbanBoard() {
   const [vagaFilter, setVagaFilter] = useState<string>('todas')
   const [stages, setStages] = useState<Stage[]>(DEFAULT_STAGES)
   const [showStages, setShowStages] = useState(false)
+  const [seen, setSeen] = useState<Set<string>>(loadSeen)
+
+  function markSeen(id: string) {
+    setSeen((prev) => {
+      if (prev.has(id)) return prev
+      const next = new Set(prev)
+      next.add(id)
+      try {
+        localStorage.setItem(SEEN_KEY, JSON.stringify([...next]))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
 
   async function load() {
     setStatus('loading')
@@ -255,7 +299,7 @@ export function KanbanBoard() {
           <div className="flex-1 overflow-x-auto px-5 py-5 sm:px-6">
             <div className="flex gap-4">
               {stages.map((stage) => {
-                const items = visible.filter((c) => stageOf(c) === stage.id)
+                const items = visible.filter((c) => stageOf(c) === stage.id).sort(byNewest)
               const isOver = overStage === stage.id
               return (
                 <section
@@ -308,7 +352,10 @@ export function KanbanBoard() {
                             setDragId(null)
                             setOverStage(null)
                           }}
-                          onClick={() => setSelectedId(candidate.id)}
+                          onClick={() => {
+                            markSeen(candidate.id)
+                            setSelectedId(candidate.id)
+                          }}
                           className={`group w-full cursor-grab rounded-lg border border-ink/10 bg-cream p-3 text-left shadow-sm transition-all hover:border-terracotta/30 hover:shadow-card active:cursor-grabbing ${
                             dragId === candidate.id ? 'opacity-40' : ''
                           }`}
@@ -327,6 +374,12 @@ export function KanbanBoard() {
                                 </span>
                               ) : null}
                             </span>
+                            {!seen.has(candidate.id) ? (
+                              <span className="inline-flex shrink-0 animate-blink items-center gap-1 rounded-full bg-terracotta px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-cream">
+                                <span className="h-1.5 w-1.5 rounded-full bg-cream" />
+                                Novo
+                              </span>
+                            ) : null}
                           </div>
                           {effectiveVaga === 'todas' && candidate.vaga ? (
                             <span className="mt-2 inline-block rounded-full bg-linen/70 px-2 py-0.5 text-[0.65rem] font-medium text-mauve">

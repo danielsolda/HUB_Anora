@@ -31,9 +31,14 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(12px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        blink: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.3' },
+        },
       },
       animation: {
         'fade-up': 'fade-up 0.5s ease-out both',
+        blink: 'blink 1.1s ease-in-out infinite',
       },
     },
   },
