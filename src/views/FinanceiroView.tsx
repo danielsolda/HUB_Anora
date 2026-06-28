@@ -53,51 +53,95 @@ function LancamentoForm({
   tipo,
   value,
   onChange,
+  allowParcelado,
+  parcelado,
+  onParcelado,
 }: {
   tipo: LancamentoTipo
   value: LancamentoInput
   onChange: (patch: Partial<LancamentoInput>) => void
+  allowParcelado: boolean
+  parcelado: boolean
+  onParcelado: (on: boolean) => void
 }) {
   const field = 'mt-1.5 w-full rounded-lg border border-ink/15 bg-cream px-3 py-2 text-sm text-ink outline-none focus:border-terracotta/50'
   const label = 'text-sm font-medium text-ink/70'
+  const num = (v: string) => (v === '' ? undefined : Number(v))
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <label className={`${label} sm:col-span-2`}>
-        Descrição*
-        <input type="text" required value={value.descricao ?? ''} onChange={(e) => onChange({ descricao: e.target.value })} className={field} placeholder="Ex.: Aluguel, Fornecedor X, Procedimento…" />
-      </label>
-      <label className={label}>
-        Valor (R$)*
-        <input type="number" step="0.01" min="0" required value={value.valor ?? ''} onChange={(e) => onChange({ valor: e.target.value === '' ? undefined : Number(e.target.value) })} className={field} />
-      </label>
-      <label className={label}>
-        Vencimento
-        <input type="date" value={value.vencimento ?? ''} onChange={(e) => onChange({ vencimento: e.target.value })} className={field} />
-      </label>
-      <label className={label}>
-        {LABELS[tipo].contraparte}
-        <input type="text" value={value.contraparte ?? ''} onChange={(e) => onChange({ contraparte: e.target.value })} className={field} />
-      </label>
-      <label className={label}>
-        Categoria
-        <input type="text" value={value.categoria ?? ''} onChange={(e) => onChange({ categoria: e.target.value })} className={field} placeholder="Aluguel, Salários, Insumos…" />
-      </label>
-      <label className={label}>
-        Situação
-        <select value={value.status ?? 'pendente'} onChange={(e) => onChange({ status: e.target.value as LancamentoStatus })} className={field}>
-          <option value="pendente">Em aberto</option>
-          <option value="pago">{LABELS[tipo].pago}</option>
-          <option value="cancelado">Cancelado</option>
-        </select>
-      </label>
-      <label className={label}>
-        Data do {tipo === 'pagar' ? 'pagamento' : 'recebimento'}
-        <input type="date" value={value.pago_em ?? ''} onChange={(e) => onChange({ pago_em: e.target.value })} className={field} />
-      </label>
-      <label className={`${label} sm:col-span-2`}>
-        Observações
-        <textarea rows={2} value={value.observacoes ?? ''} onChange={(e) => onChange({ observacoes: e.target.value })} className={`${field} resize-y`} />
-      </label>
+    <div className="space-y-4">
+      {allowParcelado ? (
+        <label className="flex items-center gap-2 text-sm font-medium text-ink/75">
+          <input type="checkbox" checked={parcelado} onChange={(e) => onParcelado(e.target.checked)} className="h-4 w-4 rounded border-ink/30 text-terracotta focus:ring-terracotta/40" />
+          Parcelado
+        </label>
+      ) : null}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <label className={`${label} sm:col-span-2`}>
+          Descrição*
+          <input type="text" required value={value.descricao ?? ''} onChange={(e) => onChange({ descricao: e.target.value })} className={field} placeholder="Ex.: Aluguel, Fornecedor X, Procedimento…" />
+        </label>
+        <label className={label}>
+          {parcelado ? 'Valor total (R$)*' : 'Valor (R$)*'}
+          <input type="number" step="0.01" min="0" required value={value.valor ?? ''} onChange={(e) => onChange({ valor: num(e.target.value) })} className={field} />
+        </label>
+        <label className={label}>
+          {parcelado ? '1º vencimento' : 'Vencimento'}
+          <input type="date" value={value.vencimento ?? ''} onChange={(e) => onChange({ vencimento: e.target.value })} className={field} />
+        </label>
+        <label className={label}>
+          {LABELS[tipo].contraparte}
+          <input type="text" value={value.contraparte ?? ''} onChange={(e) => onChange({ contraparte: e.target.value })} className={field} />
+        </label>
+        <label className={label}>
+          Categoria
+          <input type="text" value={value.categoria ?? ''} onChange={(e) => onChange({ categoria: e.target.value })} className={field} placeholder="Aluguel, Salários, Insumos…" />
+        </label>
+
+        {parcelado ? (
+          <>
+            <label className={label}>
+              Nº de parcelas
+              <input type="number" min="1" step="1" value={value.parcelas ?? ''} onChange={(e) => onChange({ parcelas: num(e.target.value) })} className={field} placeholder="Ex.: 12" />
+            </label>
+            <label className={label}>
+              Entrada (R$)
+              <input type="number" step="0.01" min="0" value={value.entrada ?? ''} onChange={(e) => onChange({ entrada: num(e.target.value) })} className={field} placeholder="0,00 (opcional)" />
+            </label>
+            <label className="flex items-center gap-2 self-end pb-2 text-sm font-medium text-ink/70">
+              <input type="checkbox" checked={!!value.entradaPaga} onChange={(e) => onChange({ entradaPaga: e.target.checked })} className="h-4 w-4 rounded border-ink/30 text-terracotta focus:ring-terracotta/40" />
+              Entrada já paga
+            </label>
+          </>
+        ) : (
+          <>
+            <label className={label}>
+              Situação
+              <select value={value.status ?? 'pendente'} onChange={(e) => onChange({ status: e.target.value as LancamentoStatus })} className={field}>
+                <option value="pendente">Em aberto</option>
+                <option value="pago">{LABELS[tipo].pago}</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </label>
+            <label className={label}>
+              Data do {tipo === 'pagar' ? 'pagamento' : 'recebimento'}
+              <input type="date" value={value.pago_em ?? ''} onChange={(e) => onChange({ pago_em: e.target.value })} className={field} />
+            </label>
+          </>
+        )}
+
+        <label className={`${label} sm:col-span-2`}>
+          Observações
+          <textarea rows={2} value={value.observacoes ?? ''} onChange={(e) => onChange({ observacoes: e.target.value })} className={`${field} resize-y`} />
+        </label>
+      </div>
+
+      {parcelado ? (
+        <p className="text-xs text-ink/45">
+          O valor total (menos a entrada) será dividido em parcelas mensais a partir do
+          1º vencimento — cada parcela vira um lançamento que pode ser pago separadamente.
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -108,6 +152,7 @@ export function FinanceiroView({ tipo }: { tipo: LancamentoTipo }) {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [form, setForm] = useState<LancamentoInput>(() => emptyForm(tipo))
+  const [parcelado, setParcelado] = useState(false)
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState<'todas' | 'aberto' | 'vencido' | 'pago'>('todas')
   const [busca, setBusca] = useState('')
@@ -125,6 +170,7 @@ export function FinanceiroView({ tipo }: { tipo: LancamentoTipo }) {
   useEffect(() => {
     setShowForm(false)
     setEditingId(null)
+    setParcelado(false)
     setFilter('todas')
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,13 +199,20 @@ export function FinanceiroView({ tipo }: { tipo: LancamentoTipo }) {
   function startAdd() {
     setForm(emptyForm(tipo))
     setEditingId(null)
+    setParcelado(false)
     setShowForm(true)
   }
 
   function startEdit(l: Lancamento) {
     setForm({ ...l })
     setEditingId(l.id)
+    setParcelado(false)
     setShowForm(true)
+  }
+
+  function toggleParcelado(on: boolean) {
+    setParcelado(on)
+    if (on && !form.parcelas) setForm((f) => ({ ...f, parcelas: 2 }))
   }
 
   async function save(e: React.FormEvent) {
@@ -167,8 +220,13 @@ export function FinanceiroView({ tipo }: { tipo: LancamentoTipo }) {
     if (!form.descricao?.trim()) return
     setSaving(true)
     try {
-      if (editingId) await updateLancamento(editingId, form)
-      else await createLancamento({ ...form, tipo })
+      if (editingId) {
+        await updateLancamento(editingId, form)
+      } else if (parcelado) {
+        await createLancamento({ ...form, tipo })
+      } else {
+        await createLancamento({ ...form, tipo, parcelas: 1, entrada: 0, entradaPaga: false })
+      }
       setShowForm(false)
       setEditingId(null)
       await load()
@@ -225,7 +283,14 @@ export function FinanceiroView({ tipo }: { tipo: LancamentoTipo }) {
 
         {showForm ? (
           <form onSubmit={save} className="mt-6 rounded-xl2 border border-ink/10 bg-cream/60 p-5">
-            <LancamentoForm tipo={tipo} value={form} onChange={(patch) => setForm((f) => ({ ...f, ...patch }))} />
+            <LancamentoForm
+              tipo={tipo}
+              value={form}
+              onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+              allowParcelado={editingId === null}
+              parcelado={parcelado}
+              onParcelado={toggleParcelado}
+            />
             <div className="mt-5">
               <button type="submit" disabled={saving || !form.descricao?.trim()} className="rounded-full bg-ink px-5 py-2 text-sm font-medium text-cream transition-colors hover:bg-terracotta disabled:opacity-40">
                 {saving ? 'Salvando…' : editingId ? 'Salvar alterações' : 'Adicionar'}
@@ -268,6 +333,11 @@ export function FinanceiroView({ tipo }: { tipo: LancamentoTipo }) {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="truncate font-semibold text-ink">{l.descricao || '—'}</span>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[es]}`}>{statusLabel(es, tipo)}</span>
+                      {l.parcelas_total ? (
+                        <span className="rounded-full bg-linen px-2 py-0.5 text-xs font-medium text-ink/55">
+                          {l.parcela === 0 ? 'Entrada' : `${l.parcela}/${l.parcelas_total}`}
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-0.5 text-sm text-ink/55">
                       {[l.contraparte, l.categoria].filter(Boolean).join(' · ') || 'Sem categoria'}

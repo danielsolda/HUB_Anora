@@ -16,6 +16,10 @@ export type Lancamento = {
   pago_em: string | null
   forma: string
   observacoes: string
+  /** Parcelamento: lançamentos do mesmo grupo, nº da parcela (0 = entrada) e total. */
+  grupo: string | null
+  parcela: number | null
+  parcelas_total: number | null
   created_at?: string
 }
 
@@ -30,6 +34,10 @@ export type LancamentoInput = {
   pago_em?: string | null
   forma?: string
   observacoes?: string
+  /** Parcelamento (só na criação): nº de parcelas, entrada (R$) e se já foi paga. */
+  parcelas?: number
+  entrada?: number
+  entradaPaga?: boolean
 }
 
 async function json<T>(path: string, options?: RequestInit): Promise<T> {
