@@ -1,44 +1,28 @@
-import { categories } from './data/services'
-import type { CategoryId } from './types'
+import { moduleIds, getModule } from './data/modules'
+import type { ModuleId } from './data/modules'
 
-/** Telas (abas) do HUB. */
-export type ViewId =
-  | 'inicio'
-  | 'todos'
-  | 'videos'
-  | 'financeiro'
-  | 'usuarios'
-  | CategoryId
+/** Telas de topo do HUB: Início, os 7 módulos e a administração de Usuários. */
+export type ViewId = 'inicio' | 'usuarios' | ModuleId
 
-/** Rota atual: uma aba e, opcionalmente, um módulo dentro dela. */
+/** Rota atual: uma tela e, opcionalmente, um submódulo dentro de um módulo. */
 export type Route = { view: ViewId; module: string | null }
 
-export const viewIds: ViewId[] = [
-  'inicio',
-  'todos',
-  'videos',
-  'financeiro',
-  'usuarios',
-  ...categories.map((c) => c.id),
-]
+export const viewIds: ViewId[] = ['inicio', 'usuarios', ...moduleIds]
 
 export function isViewId(value: string): value is ViewId {
   return (viewIds as string[]).includes(value)
 }
 
-/** Título legível de cada aba (usado na barra superior). */
+/** Título legível de cada tela (usado na barra superior). */
 export function viewLabel(view: ViewId): string {
   if (view === 'inicio') return 'Início'
-  if (view === 'todos') return 'Todos os serviços'
-  if (view === 'videos') return 'Vídeos'
-  if (view === 'financeiro') return 'Financeiro'
   if (view === 'usuarios') return 'Usuários'
-  return categories.find((c) => c.id === view)?.label ?? 'Serviços'
+  return getModule(view)?.label ?? 'HUB'
 }
 
 /**
- * Lê a rota atual do hash da URL. Formato: `#view` ou `#view/module`.
- * Ex.: `#gestao/contratacao` → { view: 'gestao', module: 'contratacao' }.
+ * Lê a rota atual do hash da URL. Formato: `#view` ou `#view/submódulo`.
+ * Ex.: `#comercial/indicadores` → { view: 'comercial', module: 'indicadores' }.
  */
 export function readRoute(): Route | null {
   const raw = window.location.hash.replace(/^#/, '')

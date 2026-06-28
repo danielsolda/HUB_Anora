@@ -6,12 +6,10 @@ import type { ViewId } from '../navigation'
  *
  * Perfis (do mais amplo ao mais restrito):
  *   - Administrador (Sócios): vê tudo.
- *   - Gerente Comercial: módulo Comercial + Documentos.
- *   - Gerente de Operações: Operações / RH & Desenvolvimento + Documentos.
- *   - Financeiro: módulo Financeiro + Documentos.
- *   - Biomédica / Assistente Comercial / Recepcionista: só Documentos (e, futuramente, Meu Perfil).
- *
- * As telas atuais já estão mapeadas para os módulos a que pertencerão.
+ *   - Gerente Comercial: Comercial + Documentos + Meu Perfil.
+ *   - Gerente de Operações: Operações + RH & Desenvolvimento + Documentos + Meu Perfil.
+ *   - Financeiro: Financeiro + Jurídico + Documentos + Meu Perfil.
+ *   - Biomédica / Assistente Comercial / Recepcionista: Documentos + Meu Perfil.
  */
 
 /** Rótulo legível de cada perfil. Fonte única (Sidebar e Usuários reutilizam). */
@@ -40,22 +38,14 @@ const MANAGERS: Role[] = ['admin', 'gerente_comercial', 'gerente_operacoes', 'fi
 
 const VIEW_ROLES: Record<ViewId, Role[]> = {
   inicio: MANAGERS,
-  todos: MANAGERS,
-  analise: ['admin', 'gerente_comercial'],
-  auditoria: ['admin', 'gerente_comercial'],
-  gestao: ['admin', 'gerente_operacoes'],
-  videos: ROLE_OPTIONS, // Documentos › Treinamentos — todos os perfis
-  financeiro: ['admin', 'financeiro'],
   usuarios: ['admin'],
-}
-
-// Visibilidade dos cards de serviço por perfil (default: todos podem ver).
-const SERVICE_ROLES: Record<string, Role[]> = {
-  'crm-dashboard': ['admin', 'gerente_comercial'],
-  'auditoria-leads': ['admin', 'gerente_comercial'],
-  contratacao: ['admin', 'gerente_operacoes'],
-  pacientes: ['admin', 'gerente_operacoes'],
+  comercial: ['admin', 'gerente_comercial'],
+  operacoes: ['admin', 'gerente_operacoes'],
+  rh: ['admin', 'gerente_operacoes'],
   financeiro: ['admin', 'financeiro'],
+  juridico: ['admin', 'financeiro'],
+  documentos: ROLE_OPTIONS, // todos os perfis
+  'meu-perfil': ROLE_OPTIONS, // todos os perfis
 }
 
 const COLLABORATORS = new Set<Role>(['biomedica', 'assistente_comercial', 'recepcionista'])
@@ -65,16 +55,11 @@ export function canAccessView(role: Role, view: ViewId): boolean {
 }
 
 export function defaultView(role: Role): ViewId {
-  // Colaboradores só têm Documentos (Vídeos) por enquanto.
-  return COLLABORATORS.has(role) ? 'videos' : 'inicio'
+  // Colaboradores começam pela área pessoal (Meu Perfil).
+  return COLLABORATORS.has(role) ? 'meu-perfil' : 'inicio'
 }
 
-export function canSeeService(role: Role, serviceId: string): boolean {
-  const allowed = SERVICE_ROLES[serviceId]
-  return allowed ? allowed.includes(role) : true
-}
-
-/** Perfil "colaborador" (acesso restrito): usado para esconder a busca, etc. */
+/** Perfil "colaborador" (acesso restrito): usado para ajustes de UI. */
 export function isCollaborator(role: Role): boolean {
   return COLLABORATORS.has(role)
 }

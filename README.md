@@ -29,64 +29,39 @@ O Kanban de Contratação depende do backend. Para o passo a passo de deploy
 
 ---
 
-## Adicionar um novo sistema ao HUB
+## Módulos e submódulos
 
-Todo o conteúdo do HUB vive em **um único arquivo**:
-[`src/data/services.ts`](src/data/services.ts). Não é preciso mexer no layout.
+O HUB é organizado em **7 módulos** (Comercial, Operações, RH & Desenvolvimento,
+Financeiro, Jurídico, Documentos, Meu Perfil), cada um com seus **submódulos**.
+Tudo vive em **um único arquivo**: [`src/data/modules.ts`](src/data/modules.ts).
+A 2ª sidebar e o roteamento (`#modulo/submodulo`) aparecem sozinhos.
 
-1. Escolha (ou crie) um ícone em [`src/lib/icons.tsx`](src/lib/icons.tsx).
-2. Acrescente um objeto ao array `services`:
+Para adicionar/ajustar um submódulo, edite o array `submodules` do módulo:
 
 ```ts
 {
-  id: 'novo-sistema',          // identificador único
-  name: 'Novo Sistema',
+  id: 'metas',                 // id único dentro do módulo
+  label: 'Metas',
   description: 'Descrição curta, em tom calmo e objetivo.',
-  category: 'gestao',          // analise | atendimento | gestao | marketing | operacao
-  status: 'ativo',             // ativo | em-breve | manutencao
-  href: 'https://...',         // link de acesso (quando ativo)
-  external: true,              // abre em nova aba (sistemas separados)
-  icon: BoxIcon,               // ícone importado de ../lib/icons
-  keywords: ['palavra', 'busca'], // termos extras para a busca
+  icon: TargetIcon,            // ícone de ../lib/icons
+  status: 'ativo',             // ativo | em-breve
+  content: { kind: 'placeholder' },
 }
 ```
 
-O card aparece automaticamente, agrupado pela `category`, e já entra na busca.
+O campo `content` define o que o submódulo abre:
 
-### Situações (`status`)
+| `content.kind`  | abre                                                        |
+| --------------- | ----------------------------------------------------------- |
+| `placeholder`   | tela "Em desenvolvimento" (padrão dos submódulos sem dados) |
+| `embed` + `url` | um sistema externo embutido (iframe), ex.: dashboard do CRM |
+| `auditoria`     | os gráficos de Auditoria de Leads (`AuditoriaView`)         |
+| `contratacao`   | o quadro de Recrutamento (`KanbanBoard`)                    |
+| `videos`        | a biblioteca de Treinamentos (`VideosView`)                 |
 
-| status        | aparência                         | quando usar                          |
-| ------------- | --------------------------------- | ------------------------------------ |
-| `ativo`       | card clicável, destaque terracota | sistema no ar, com `href`            |
-| `em-breve`    | card esmaecido, sem link          | em desenvolvimento                   |
-| `manutencao`  | selo de manutenção                | temporariamente fora                 |
-
-### Link secundário (e modal embutido)
-
-Um serviço pode ter um **link secundário** — útil quando o sistema tem uma
-"área de dados" (ex.: a planilha de respostas de um formulário):
-
-```ts
-secondary: {
-  label: 'Ver respostas',
-  href: 'https://docs.google.com/spreadsheets/d/<ID>/edit',     // abre em nova aba
-  embedSrc: 'https://docs.google.com/spreadsheets/d/<ID>/preview', // abre num modal
-  icon: GoogleSheetsIcon,                                        // ícone do botão
-}
-```
-
-- Com `embedSrc`, o botão abre um **modal** com o conteúdo embutido (iframe), e o
-  modal tem um atalho "Abrir no Google Sheets" como alternativa.
-- Sem `embedSrc`, o botão apenas abre o `href` em nova aba.
-- Para a planilha embutir, ela precisa estar compartilhada como **"qualquer
-  pessoa com o link"** (somente leitura já basta).
-
-### Adicionar uma categoria
-
-No mesmo arquivo, inclua um item em `categories` (com `label`, `description` e
-um `icon`) e use o novo `id` no campo `category` dos serviços. O tipo
-`CategoryId` em [`src/types.ts`](src/types.ts) também precisa do novo id. A
-categoria aparece sozinha na **sidebar**, na busca e na aba Início.
+Submódulos com `status: 'ativo'` ganham um ponto verde-oliva na lista; os
+`em-breve`, um ponto areia. As permissões por módulo ficam em
+[`src/auth/access.ts`](src/auth/access.ts).
 
 ---
 
@@ -130,30 +105,29 @@ src/
 │   ├── LoginScreen.tsx        # tela de login
 │   ├── ChangePasswordModal.tsx# trocar a própria senha
 │   ├── WelcomeOverlay.tsx     # animação "Bem-vindo ao HUB"
-│   ├── ServiceCard.tsx        # card de um sistema
 │   ├── EmbedModal.tsx         # modal com conteúdo embutido (iframe)
-│   ├── KanbanBoard.tsx        # quadro de Contratação (etapas + cards)
+│   ├── KanbanBoard.tsx        # quadro de Recrutamento (etapas + cards)
 │   ├── CandidateDetailModal.tsx # dados do candidato + troca de etapa
 │   ├── DashboardEmbed.tsx     # sistema externo embutido inline (iframe)
+│   ├── AppointmentsMap.tsx    # mapa interativo (Leaflet) de agendamentos
 │   └── AnoraLogo.tsx          # símbolo + lockup da marca
 ├── views/
 │   ├── HomeView.tsx           # aba Início (central de controle)
-│   ├── ServicesView.tsx       # "Todos", categoria e resultados de busca
-│   ├── CategoryWorkspace.tsx  # Gestão: 2ª sidebar de módulos (Kanban etc.)
-│   ├── VideosView.tsx         # aba Vídeos
-│   ├── FinanceiroView.tsx     # aba Financeiro (dashboard, admin/financeiro)
+│   ├── ModuleWorkspace.tsx    # módulo: 2ª sidebar de submódulos + conteúdo
+│   ├── AuditoriaView.tsx      # Comercial › Indicadores (gráficos de leads)
+│   ├── VideosView.tsx         # Documentos › Treinamentos
 │   └── UsersView.tsx          # aba Usuários (gestão de acessos)
-├── data/services.ts          # ← registro de serviços e categorias (edite aqui)
+├── data/modules.ts           # ← os 7 módulos e seus submódulos (edite aqui)
 ├── lib/
 │   ├── icons.tsx              # ícones de linha
 │   └── candidates.ts          # cliente da API do Kanban
-├── navigation.ts              # rotas (view + módulo) via hash da URL
+├── navigation.ts              # rotas (módulo + submódulo) via hash da URL
 ├── types.ts · App.tsx · index.css
 
 server/                        # backend (Node + Express)
 ├── index.js                   # API + serve o frontend (produção)
 ├── auth.js                    # hash de senha (bcrypt) + tokens (JWT)
-├── users.js                   # usuários e papéis + seed do dono
+├── users.js                   # usuários e perfis + seed do Administrador
 ├── db.js                      # PostgreSQL (etapas + fallback memória)
 ├── sheets.js                  # leitura da planilha via conta de serviço Google
 └── stages.js                  # etapas do Kanban (compartilhado)
@@ -161,24 +135,23 @@ server/                        # backend (Node + Express)
 
 ### Navegação
 
-A rota tem uma aba e, opcionalmente, um módulo, refletidos no hash da URL:
-`/#gestao` ou `/#gestao/contratacao` — links são compartilháveis. A tela de
-boas-vindas roda uma vez por sessão e respeita `prefers-reduced-motion`.
+A rota tem um módulo e, opcionalmente, um submódulo, refletidos no hash da URL:
+`/#comercial` ou `/#comercial/indicadores` — links são compartilháveis. A tela de
+boas-vindas roda a cada carregamento e respeita `prefers-reduced-motion`.
 
 ---
 
 ## Acessos e perfis
 
-O HUB exige **login**. Os perfis seguem a estrutura da plataforma (módulos
-Comercial, Operações/RH, Financeiro, Documentos…):
+O HUB exige **login**. Cada perfil vê apenas os módulos liberados:
 
-| Perfil                     | Acesso                                            |
-| -------------------------- | ------------------------------------------------- |
-| **Administrador** (Sócios) | tudo, incluindo a aba **Usuários**                |
-| **Gerente Comercial**      | **Análise** e **Auditoria** (Comercial) + Vídeos  |
-| **Gerente de Operações**   | **Gestão/Contratação** (RH) + Vídeos              |
-| **Financeiro**             | **Financeiro** + Vídeos                           |
-| **Biomédica / Assistente Comercial / Recepcionista** | apenas **Vídeos** (Documentos) |
+| Perfil                     | Módulos                                              |
+| -------------------------- | --------------------------------------------------- |
+| **Administrador** (Sócios) | todos + a aba **Usuários**                           |
+| **Gerente Comercial**      | **Comercial** + Documentos + Meu Perfil             |
+| **Gerente de Operações**   | **Operações** + **RH & Desenvolvimento** + Documentos + Meu Perfil |
+| **Financeiro**             | **Financeiro** + **Jurídico** + Documentos + Meu Perfil |
+| **Biomédica / Assistente Comercial / Recepcionista** | **Documentos** + **Meu Perfil** |
 
 O Administrador é criado no primeiro boot (senha nos logs ou via `OWNER_PASSWORD`);
 papéis antigos são migrados automaticamente.
@@ -189,9 +162,9 @@ deploy em [`DEPLOY.md`](DEPLOY.md).
 
 ---
 
-## Contratação (Kanban)
+## Recrutamento (Kanban)
 
-Em **Gestão → Contratação** há um quadro com as etapas _Novo Candidato_,
+Em **RH & Desenvolvimento → Recrutamento** há um quadro com as etapas _Novo Candidato_,
 _Marcando entrevista_, _Entrevistado_ e _Experiência 90 dias_. Cada resposta do
 formulário de vagas vira um card; clicar no card abre os dados preenchidos e
 permite mover a pessoa de etapa (arraste o card ou use os botões no modal).

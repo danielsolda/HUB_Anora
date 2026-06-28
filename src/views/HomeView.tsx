@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
-import { ServiceCard } from '../components/ServiceCard'
 import { AppointmentsMap } from '../components/AppointmentsMap'
 import { WeekdayChart } from '../components/WeekdayChart'
 import { ArrowRightIcon } from '../lib/icons'
-import { services } from '../data/services'
+import { modules } from '../data/modules'
 import { fetchAudit } from '../lib/audit'
 import { computeCityStats, computeWeekdayStats, type CityStats, type WeekdayStats } from '../lib/insights'
 import type { ViewId } from '../navigation'
 import { useAuth } from '../auth/AuthContext'
-import { canSeeService, canAccessView } from '../auth/access'
+import { canAccessView } from '../auth/access'
 
 const WEEK_FULL: Record<string, string> = {
   Seg: 'Segunda',
@@ -130,9 +129,8 @@ function Agendamentos() {
 
 export function HomeView({ onNavigate }: { onNavigate: (view: ViewId) => void }) {
   const { user } = useAuth()
-  const base = services.filter((s) => !user || canSeeService(user.role, s.id))
-  const active = base.filter((s) => s.status === 'ativo')
-  const showInsights = !user || canAccessView(user.role, 'auditoria')
+  const visibleModules = modules.filter((m) => !user || canAccessView(user.role, m.id))
+  const showInsights = !user || canAccessView(user.role, 'comercial')
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8">
@@ -145,32 +143,53 @@ export function HomeView({ onNavigate }: { onNavigate: (view: ViewId) => void })
           Tudo o que move a clínica, em um só lugar.
         </h1>
         <p className="mt-4 max-w-xl text-balance text-base leading-relaxed text-ink/60">
-          Acesse os dashboards e sistemas da Anora pela navegação ao lado, ou comece pelos
-          atalhos abaixo.
+          Acesse os módulos da Anora pela navegação ao lado, ou comece pelos atalhos
+          abaixo.
         </p>
       </section>
 
       {/* Agendamentos: mapa por cidade + dias da semana */}
       {showInsights ? <Agendamentos /> : null}
 
-      {/* Acesso rápido */}
-      {active.length > 0 ? (
+      {/* Acesso rápido aos módulos */}
+      {visibleModules.length > 0 ? (
         <section className="animate-fade-up mt-14" style={{ animationDelay: '120ms' }}>
-          <div className="flex items-baseline justify-between gap-4">
-            <h2 className="text-lg font-semibold text-ink">Acesso rápido</h2>
-            <button
-              type="button"
-              onClick={() => onNavigate('todos')}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-terracotta transition-colors hover:text-ink"
-            >
-              Ver todos
-              <ArrowRightIcon className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {active.map((service) => (
-              <ServiceCard key={service.id} service={service} />
-            ))}
+          <h2 className="text-lg font-semibold text-ink">Módulos</h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleModules.map((module) => {
+              const Icon = module.icon
+              const ativos = module.submodules.filter((s) => s.status === 'ativo').length
+              return (
+                <button
+                  key={module.id}
+                  type="button"
+                  onClick={() => onNavigate(module.id)}
+                  className="group flex items-start gap-4 rounded-xl2 border border-ink/10 bg-cream p-5 text-left shadow-card transition-all duration-300 hover:-translate-y-0.5 hover:border-terracotta/30 hover:shadow-card-hover"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl2 bg-linen text-olive transition-colors group-hover:bg-ink group-hover:text-cream">
+                    <Icon className="h-6 w-6" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-ink">{module.label}</span>
+                      <ArrowRightIcon className="h-4 w-4 text-ink/25 transition-transform group-hover:translate-x-0.5 group-hover:text-terracotta" />
+                    </span>
+                    <span className="mt-1 block text-sm leading-relaxed text-ink/55">
+                      {module.description}
+                    </span>
+                    {ativos > 0 ? (
+                      <span className="mt-2 inline-flex rounded-full bg-olive/10 px-2 py-0.5 text-[0.7rem] font-medium text-olive">
+                        {ativos} ativo{ativos > 1 ? 's' : ''}
+                      </span>
+                    ) : (
+                      <span className="mt-2 inline-flex rounded-full bg-sand/25 px-2 py-0.5 text-[0.7rem] font-medium text-mauve">
+                        Em breve
+                      </span>
+                    )}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </section>
       ) : null}

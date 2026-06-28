@@ -2,21 +2,18 @@ import { useState, type ComponentType, type SVGProps } from 'react'
 import { AnoraMark } from './AnoraLogo'
 import { ChangePasswordModal } from './ChangePasswordModal'
 import {
-  ChartIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  GridIcon,
   HomeIcon,
   KeyIcon,
   LogoutIcon,
   UsersIcon,
-  VideoIcon,
   XIcon,
 } from '../lib/icons'
-import { categories, services } from '../data/services'
+import { modules } from '../data/modules'
 import type { ViewId } from '../navigation'
 import { useAuth } from '../auth/AuthContext'
-import { canAccessView, canSeeService, ROLE_LABELS } from '../auth/access'
+import { canAccessView, ROLE_LABELS } from '../auth/access'
 import type { Role } from '../auth/api'
 
 type NavItem = {
@@ -27,32 +24,12 @@ type NavItem = {
 }
 
 function buildNav(role: Role) {
-  const visibleServices = (categoryId: string) =>
-    services.filter((s) => s.category === categoryId && canSeeService(role, s.id)).length
-
-  const primary: NavItem[] = [
-    { id: 'inicio', label: 'Início', icon: HomeIcon },
-    { id: 'videos', label: 'Vídeos', icon: VideoIcon },
-  ]
-  const servicesNav: NavItem[] = [
-    {
-      id: 'todos',
-      label: 'Todos os serviços',
-      icon: GridIcon,
-      count: services.filter((s) => canSeeService(role, s.id)).length,
-    },
-    ...categories.map((c) => ({
-      id: c.id as ViewId,
-      label: c.label,
-      icon: c.icon,
-      count: visibleServices(c.id),
-    })),
-    { id: 'financeiro', label: 'Financeiro', icon: ChartIcon },
-  ]
+  const primary: NavItem[] = [{ id: 'inicio', label: 'Início', icon: HomeIcon }]
+  const moduleNav: NavItem[] = modules.map((m) => ({ id: m.id, label: m.label, icon: m.icon }))
   const admin: NavItem[] = [{ id: 'usuarios', label: 'Usuários', icon: UsersIcon }]
 
   const keep = (items: NavItem[]) => items.filter((i) => canAccessView(role, i.id))
-  return { primary: keep(primary), services: keep(servicesNav), admin: keep(admin) }
+  return { primary: keep(primary), modules: keep(moduleNav), admin: keep(admin) }
 }
 
 type SidebarProps = {
@@ -168,7 +145,7 @@ export function Sidebar({
         >
           <button
             type="button"
-            onClick={() => onNavigate(nav.primary[0]?.id ?? 'videos')}
+            onClick={() => onNavigate(nav.primary[0]?.id ?? nav.modules[0]?.id ?? 'meu-perfil')}
             className="flex items-center gap-2.5 text-left"
           >
             <AnoraMark className="h-8 w-8 shrink-0 text-terracotta" title="Clínica Anora" />
@@ -203,11 +180,11 @@ export function Sidebar({
             ))}
           </div>
 
-          {nav.services.length > 0 ? (
+          {nav.modules.length > 0 ? (
             <>
-              {sectionLabel('Serviços')}
+              {sectionLabel('Módulos')}
               <div className="space-y-1">
-                {nav.services.map((item) => (
+                {nav.modules.map((item) => (
                   <NavButton
                     key={item.id}
                     item={item}

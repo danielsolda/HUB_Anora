@@ -5,19 +5,16 @@ import { WelcomeOverlay } from './components/WelcomeOverlay'
 import { LoginScreen } from './components/LoginScreen'
 import { AnoraMark } from './components/AnoraLogo'
 import { HomeView } from './views/HomeView'
-import { ServicesView } from './views/ServicesView'
-import { CategoryWorkspace } from './views/CategoryWorkspace'
-import { VideosView } from './views/VideosView'
-import { FinanceiroView } from './views/FinanceiroView'
-import { AuditoriaView } from './views/AuditoriaView'
+import { ModuleWorkspace } from './views/ModuleWorkspace'
 import { UsersView } from './views/UsersView'
-import { DashboardEmbed } from './components/DashboardEmbed'
-import { services } from './data/services'
+import { moduleIds, type ModuleId } from './data/modules'
 import type { Route, ViewId } from './navigation'
 import { readRoute, writeRoute } from './navigation'
 import { useAuth } from './auth/AuthContext'
-import { canAccessView, defaultView, isCollaborator } from './auth/access'
+import { canAccessView, defaultView } from './auth/access'
 import type { User } from './auth/api'
+
+const isModuleView = (view: ViewId): view is ModuleId => (moduleIds as string[]).includes(view)
 
 function prefersReducedMotion() {
   try {
@@ -101,53 +98,25 @@ function AppShell({ user }: { user: User }) {
     }
   }, [user.role, route.view, navigate])
 
-  const searching = query.trim().length > 0
-  // Views que embutem um dashboard/planilha em tela cheia: o próprio conteúdo já
-  // tem cabeçalho, então a barra superior do app não aparece (sem duplicar).
-  const embedViews = ['analise', 'auditoria']
-  const chromeless = embedViews.includes(route.view)
-  // Busca não aparece nesses dashboards nem em Financeiro, nem para colaboradores.
-  const showSearch =
-    !isCollaborator(user.role) && !chromeless && route.view !== 'financeiro'
+  // Módulos têm a própria 2ª sidebar e cabeçalho — a barra superior do app não
+  // aparece neles (Início e Usuários a usam).
+  const chromeless = isModuleView(route.view)
 
   function renderMain() {
     if (!canAccessView(user.role, route.view)) return null
-    if (searching) return <ServicesView view="todos" query={query} />
     if (route.view === 'inicio') return <HomeView onNavigate={(view) => navigate(view)} />
-    if (route.view === 'videos') return <VideosView />
-    if (route.view === 'financeiro') return <FinanceiroView />
     if (route.view === 'usuarios') return <UsersView />
-    if (route.view === 'auditoria') {
-      return <AuditoriaView onOpenMenu={() => setSidebarOpen(true)} />
-    }
-    if (route.view === 'analise') {
-      // Abre direto o dashboard embutido (sem 2ª sidebar).
-      const dash = services.find(
-        (s) => s.category === 'analise' && s.status === 'ativo' && s.embedUrl,
-      )
-      return dash?.embedUrl ? (
-        <DashboardEmbed
-          title={dash.name}
-          src={dash.embedUrl}
-          onOpenMenu={() => setSidebarOpen(true)}
-          fullHeight
-        />
-      ) : (
-        <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center text-sm text-ink/50">
-          Nenhum dashboard disponível.
-        </div>
-      )
-    }
-    if (route.view === 'gestao') {
+    if (isModuleView(route.view)) {
       return (
-        <CategoryWorkspace
-          categoryId="gestao"
-          activeModule={route.module}
-          onSelectModule={(module) => navigate('gestao', module)}
+        <ModuleWorkspace
+          moduleId={route.view}
+          activeSubmodule={route.module}
+          onSelectSubmodule={(sub) => navigate(route.view, sub)}
+          onOpenMenu={() => setSidebarOpen(true)}
         />
       )
     }
-    return <ServicesView view={route.view} query="" />
+    return <HomeView onNavigate={(view) => navigate(view)} />
   }
 
   return (
@@ -172,7 +141,7 @@ function AppShell({ user }: { user: User }) {
             query={query}
             onQuery={setQuery}
             onOpenMenu={() => setSidebarOpen(true)}
-            showSearch={showSearch}
+            showSearch={false}
           />
         )}
 

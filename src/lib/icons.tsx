@@ -309,6 +309,99 @@ export function RefreshIcon(props: IconProps) {
   )
 }
 
+export function ScaleIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 4v15M8 19h8M5 8h14" />
+      <path d="M5 8l-2 4a3 3 0 0 0 4 0l-2-4M19 8l-2 4a3 3 0 0 0 4 0l-2-4" />
+    </Icon>
+  )
+}
+
+export function FolderIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M4 7a2 2 0 0 1 2-2h3l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z" />
+    </Icon>
+  )
+}
+
+export function UserIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
+    </Icon>
+  )
+}
+
+export function BriefcaseIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="7.5" width="17" height="12" rx="2" />
+      <path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5M3.5 12.5h17" />
+    </Icon>
+  )
+}
+
+export function TargetIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="7.5" />
+      <circle cx="12" cy="12" r="3.5" />
+      <circle cx="12" cy="12" r="0.5" />
+    </Icon>
+  )
+}
+
+export function TrophyIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M8 4h8v4a4 4 0 0 1-8 0V4Z" />
+      <path d="M8 5H5.5a2.5 2.5 0 0 0 2.5 4M16 5h2.5a2.5 2.5 0 0 1-2.5 4" />
+      <path d="M12 12v3M9 19h6M10 19l.4-4M14 19l-.4-4" />
+    </Icon>
+  )
+}
+
+export function TruckIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="7" width="11" height="9" rx="1.5" />
+      <path d="M14 10h3.5l2.5 3v3H14z" />
+      <circle cx="7" cy="17.5" r="1.6" />
+      <circle cx="17" cy="17.5" r="1.6" />
+    </Icon>
+  )
+}
+
+export function FileTextIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
+      <path d="M14 3v4h4M9 12h6M9 15.5h6M9 8.5h2.5" />
+    </Icon>
+  )
+}
+
+export function AwardIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="9" r="5" />
+      <path d="M9 13.5 8 21l4-2 4 2-1-7.5" />
+    </Icon>
+  )
+}
+
+export function BellIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M6 10a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
+    </Icon>
+  )
+}
+
 /** Ícone da marca Google Sheets (cores fixas, não usa currentColor). */
 export function GoogleSheetsIcon(props: IconProps) {
   return (
