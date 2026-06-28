@@ -50,6 +50,11 @@ export async function listLancamentos(tipo: LancamentoTipo): Promise<Lancamento[
   return (await json<{ lancamentos: Lancamento[] }>(`/api/financeiro/lancamentos?tipo=${tipo}`)).lancamentos
 }
 
+/** Todos os lançamentos (pagar + receber) — usado nos relatórios. */
+export async function listAllLancamentos(): Promise<Lancamento[]> {
+  return (await json<{ lancamentos: Lancamento[] }>('/api/financeiro/lancamentos')).lancamentos
+}
+
 export async function createLancamento(input: LancamentoInput): Promise<Lancamento> {
   return (
     await json<{ lancamento: Lancamento }>('/api/financeiro/lancamentos', {

@@ -45,6 +45,7 @@ export type SubmoduleContent =
   | { kind: 'colaboradores' }
   | { kind: 'financeiro'; tipo: 'pagar' | 'receber' }
   | { kind: 'fluxo' }
+  | { kind: 'relatorios' }
   | { kind: 'videos' }
 
 export type Submodule = {
@@ -174,7 +175,14 @@ export const modules: Module[] = [
       },
       soon('notas-fiscais', 'Notas fiscais', FileTextIcon, 'Emissão e controle de notas fiscais.'),
       soon('fornecedores', 'Contratos com fornecedores', FileTextIcon, 'Contratos com fornecedores.'),
-      soon('relatorios', 'Relatórios financeiros', ChartIcon, 'Relatórios financeiros.'),
+      {
+        id: 'relatorios',
+        label: 'Relatórios financeiros',
+        description: 'Resumo das contas por categoria e período.',
+        icon: ChartIcon,
+        status: 'ativo',
+        content: { kind: 'relatorios' },
+      },
       soon('contabeis', 'Documentos contábeis', FolderIcon, 'Documentos contábeis.'),
     ],
   },

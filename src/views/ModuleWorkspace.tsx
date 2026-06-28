@@ -5,6 +5,7 @@ import { VideosView } from './VideosView'
 import { ColaboradoresView } from './ColaboradoresView'
 import { FinanceiroView } from './FinanceiroView'
 import { FluxoCaixaView } from './FluxoCaixaView'
+import { RelatoriosView } from './RelatoriosView'
 import { MenuIcon } from '../lib/icons'
 import { getModule, type Module, type Submodule } from '../data/modules'
 
@@ -34,6 +35,7 @@ function SubmoduleContent({ submodule }: { submodule: Submodule }) {
   if (c.kind === 'colaboradores') return <ColaboradoresView />
   if (c.kind === 'financeiro') return <FinanceiroView tipo={c.tipo} />
   if (c.kind === 'fluxo') return <FluxoCaixaView />
+  if (c.kind === 'relatorios') return <RelatoriosView />
   if (c.kind === 'videos') return <VideosView />
   return <ModulePlaceholder submodule={submodule} />
 }
