@@ -33,6 +33,7 @@ import {
   createLancamento,
   updateLancamento,
   deleteLancamento,
+  getFluxo,
 } from './financeiro.js'
 import {
   initStages,
@@ -413,6 +414,15 @@ app.delete('/api/financeiro/lancamentos/:id', authFresh, finRole, async (req, re
   if (!l) return res.status(404).json({ error: 'not_found' })
   await deleteLancamento(req.params.id)
   res.json({ ok: true })
+})
+
+app.get('/api/financeiro/fluxo', authFresh, finRole, async (_req, res) => {
+  try {
+    res.json(await getFluxo())
+  } catch (error) {
+    console.error('[api] erro no fluxo de caixa:', error)
+    res.status(500).json({ error: 'fluxo_failed' })
+  }
 })
 
 // ── Frontend estático (produção) ──

@@ -265,3 +265,42 @@ export async function deleteLancamento(id) {
   }
   await pool.query('DELETE FROM financeiro_lancamentos WHERE id = $1', [id])
 }
+
+const round2 = (n) => Math.round(n * 100) / 100
+
+/**
+ * Fluxo de caixa mensal, em dois modos:
+ *   - realizado: o que foi de fato pago/recebido (status 'pago', pela data do
+ *     pagamento/recebimento);
+ *   - previsto: tudo que não foi cancelado, pela data de vencimento.
+ * Entradas = contas a receber; saídas = contas a pagar.
+ */
+export async function getFluxo() {
+  const all = await listLancamentos()
+  const realizado = new Map()
+  const previsto = new Map()
+  const add = (map, mes, tipo, valor) => {
+    if (!mes) return
+    let b = map.get(mes)
+    if (!b) {
+      b = { entradas: 0, saidas: 0 }
+      map.set(mes, b)
+    }
+    if (tipo === 'receber') b.entradas += valor
+    else b.saidas += valor
+  }
+  for (const l of all) {
+    if (l.status === 'pago' && l.pago_em) add(realizado, l.pago_em.slice(0, 7), l.tipo, l.valor)
+    if (l.status !== 'cancelado' && l.vencimento) add(previsto, l.vencimento.slice(0, 7), l.tipo, l.valor)
+  }
+  const toSeries = (map) =>
+    [...map.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([mes, b]) => ({
+        mes,
+        entradas: round2(b.entradas),
+        saidas: round2(b.saidas),
+        saldo: round2(b.entradas - b.saidas),
+      }))
+  return { realizado: toSeries(realizado), previsto: toSeries(previsto) }
+}

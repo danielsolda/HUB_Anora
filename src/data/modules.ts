@@ -44,6 +44,7 @@ export type SubmoduleContent =
   | { kind: 'contratacao' }
   | { kind: 'colaboradores' }
   | { kind: 'financeiro'; tipo: 'pagar' | 'receber' }
+  | { kind: 'fluxo' }
   | { kind: 'videos' }
 
 export type Submodule = {
@@ -147,7 +148,14 @@ export const modules: Module[] = [
     description: 'Caixa, contas, notas e relatórios financeiros.',
     icon: WalletIcon,
     submodules: [
-      soon('fluxo-caixa', 'Fluxo de caixa', ChartIcon, 'Entradas e saídas do caixa.'),
+      {
+        id: 'fluxo-caixa',
+        label: 'Fluxo de caixa',
+        description: 'Entradas e saídas por mês, com saldo previsto e realizado.',
+        icon: ChartIcon,
+        status: 'ativo',
+        content: { kind: 'fluxo' },
+      },
       {
         id: 'contas-pagar',
         label: 'Contas a pagar',

@@ -72,6 +72,20 @@ export async function deleteLancamento(id: number): Promise<void> {
   await json(`/api/financeiro/lancamentos/${id}`, { method: 'DELETE' })
 }
 
+export type FluxoMes = { mes: string; entradas: number; saidas: number; saldo: number }
+export type Fluxo = { realizado: FluxoMes[]; previsto: FluxoMes[] }
+
+export async function fetchFluxo(): Promise<Fluxo> {
+  return json<Fluxo>('/api/financeiro/fluxo')
+}
+
+const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+/** 'YYYY-MM' → 'Ago/26'. */
+export function formatMes(mes: string): string {
+  const [y, m] = mes.split('-')
+  return `${MESES[Number(m) - 1] ?? m}/${y.slice(2)}`
+}
+
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 export function formatBRL(value: number): string {
   return BRL.format(value || 0)

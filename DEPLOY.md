@@ -178,6 +178,7 @@ formulário aparece como card; mover um card grava a etapa no PostgreSQL.
 | PATCH/DELETE | `/api/colaboradores/:id/registros/:rid` | edita/remove registro (admin/operações) |
 | GET/POST | `/api/financeiro/lancamentos` | contas a pagar/receber por tipo (admin/financeiro) |
 | GET/PATCH/DELETE | `/api/financeiro/lancamentos/:id` | lê/edita/remove lançamento (admin/financeiro) |
+| GET    | `/api/financeiro/fluxo`        | fluxo de caixa mensal: realizado/previsto (admin/financeiro) |
 
 As etapas do Kanban são configuráveis (engrenagem do quadro) e ficam no banco
 (`kanban_stages`), começando com as quatro padrão. Os colaboradores ficam na
