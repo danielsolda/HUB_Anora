@@ -10,6 +10,7 @@ import pg from 'pg'
 let pool = null
 let ready = false
 const memory = new Map()
+const seenMem = new Map() // userId -> Set<candidateId> (fallback em memória)
 
 export const dbMode = process.env.DATABASE_URL ? 'pg' : 'memory'
 export const dbReady = () => ready
@@ -49,6 +50,15 @@ export async function initDb() {
       updated_at   timestamptz NOT NULL DEFAULT now()
     )
   `)
+  // Cards de recrutamento já vistos, por usuário (selo "Novo").
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS candidate_views (
+      user_id      int NOT NULL,
+      candidate_id text NOT NULL,
+      seen_at      timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, candidate_id)
+    )
+  `)
   ready = true
   console.log('[db] PostgreSQL conectado.')
 }
@@ -81,5 +91,38 @@ export async function setStage(id, stage) {
      ON CONFLICT (candidate_id)
      DO UPDATE SET stage = EXCLUDED.stage, updated_at = now()`,
     [id, stage],
+  )
+}
+
+/** Ids dos candidatos que ESTE usuário já abriu (para o selo "Novo"). */
+export async function getSeenCandidates(userId) {
+  if (!pool) return [...(seenMem.get(Number(userId)) || [])]
+  try {
+    const { rows } = await pool.query(
+      'SELECT candidate_id FROM candidate_views WHERE user_id = $1',
+      [userId],
+    )
+    return rows.map((r) => r.candidate_id)
+  } catch (error) {
+    console.error('[db] erro ao ler vistos (seguindo sem eles):', error.message)
+    return []
+  }
+}
+
+/** Marca um candidato como visto por um usuário (idempotente). */
+export async function markCandidateSeen(userId, candidateId) {
+  if (!pool) {
+    let set = seenMem.get(Number(userId))
+    if (!set) {
+      set = new Set()
+      seenMem.set(Number(userId), set)
+    }
+    set.add(candidateId)
+    return
+  }
+  await pool.query(
+    `INSERT INTO candidate_views (user_id, candidate_id)
+     VALUES ($1, $2) ON CONFLICT (user_id, candidate_id) DO NOTHING`,
+    [userId, candidateId],
   )
 }

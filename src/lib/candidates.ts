@@ -53,6 +53,19 @@ export async function fetchCandidates(): Promise<CandidatesResult> {
   return (await res.json()) as CandidatesResult
 }
 
+/** Ids dos candidatos que o usuário logado já abriu (selo "Novo"). */
+export async function fetchSeenCandidates(): Promise<string[]> {
+  const res = await apiFetch('/api/candidates/seen')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return ((await res.json()) as { seen: string[] }).seen
+}
+
+/** Marca um candidato como visto pelo usuário logado. */
+export async function markCandidateSeen(id: string): Promise<void> {
+  const res = await apiFetch(`/api/candidates/${encodeURIComponent(id)}/seen`, { method: 'POST' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
 /** Salva a movimentação de um candidato (etapa) no backend. */
 export async function saveStage(id: string, stage: StageId): Promise<void> {
   const res = await apiFetch(`/api/candidates/${encodeURIComponent(id)}/stage`, {

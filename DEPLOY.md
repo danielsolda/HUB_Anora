@@ -169,6 +169,8 @@ formulário aparece como card; mover um card grava a etapa no PostgreSQL.
 | GET    | `/api/audit`                   | auditoria: série mensal + linhas (admin/comercial) |
 | GET    | `/api/candidates`              | candidatos + etapa salva (admin/operações) |
 | PATCH  | `/api/candidates/:id/stage`    | salva a etapa de um card (admin/operações) |
+| GET    | `/api/candidates/seen`         | ids já vistos por este usuário (admin/operações) |
+| POST   | `/api/candidates/:id/seen`     | marca um card como visto (admin/operações) |
 | GET    | `/api/colaboradores`           | lista colaboradores (admin/operações)      |
 | POST   | `/api/colaboradores`           | cria colaborador (admin/operações)         |
 | GET/PATCH/DELETE | `/api/colaboradores/:id` | lê/edita/remove colaborador (admin/operações) |

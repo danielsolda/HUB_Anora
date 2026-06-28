@@ -9,7 +9,9 @@ import {
   SHEET_EDIT_URL,
   SHEET_PREVIEW_URL,
   fetchCandidates,
+  fetchSeenCandidates,
   fetchStages,
+  markCandidateSeen,
   saveStage,
 } from '../lib/candidates'
 import type { Candidate, Stage, StageId } from '../lib/candidates'
@@ -55,15 +57,6 @@ function byNewest(a: Candidate, b: Candidate): number {
   return parseTs(b.timestamp) - parseTs(a.timestamp)
 }
 
-// Cards já abertos (vistos) ficam guardados por dispositivo, para o selo "Novo".
-const SEEN_KEY = 'anora_recrutamento_seen'
-function loadSeen(): Set<string> {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]') as string[])
-  } catch {
-    return new Set()
-  }
-}
 
 export function KanbanBoard() {
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -77,29 +70,32 @@ export function KanbanBoard() {
   const [vagaFilter, setVagaFilter] = useState<string>('todas')
   const [stages, setStages] = useState<Stage[]>(DEFAULT_STAGES)
   const [showStages, setShowStages] = useState(false)
-  const [seen, setSeen] = useState<Set<string>>(loadSeen)
+  // Cards já vistos por ESTE usuário (registrado no banco, por usuário).
+  const [seen, setSeen] = useState<Set<string>>(new Set())
 
   function markSeen(id: string) {
     setSeen((prev) => {
       if (prev.has(id)) return prev
       const next = new Set(prev)
       next.add(id)
-      try {
-        localStorage.setItem(SEEN_KEY, JSON.stringify([...next]))
-      } catch {
-        /* ignore */
-      }
       return next
     })
+    // Registra no servidor; se falhar, reaparece no próximo carregamento.
+    markCandidateSeen(id).catch(() => {})
   }
 
   async function load() {
     setStatus('loading')
     try {
-      const [cands, stgs] = await Promise.all([fetchCandidates(), fetchStages()])
+      const [cands, stgs, seenIds] = await Promise.all([
+        fetchCandidates(),
+        fetchStages(),
+        fetchSeenCandidates().catch(() => [] as string[]),
+      ])
       setCandidates(cands.candidates)
       setSource(cands.source)
       setStages(stgs.length ? stgs : DEFAULT_STAGES)
+      setSeen((prev) => new Set([...prev, ...seenIds]))
       setStatus('ok')
     } catch {
       setStatus('error')
@@ -124,9 +120,13 @@ export function KanbanBoard() {
     const id = window.setInterval(async () => {
       if (document.hidden) return
       try {
-        const result = await fetchCandidates()
+        const [result, seenIds] = await Promise.all([
+          fetchCandidates(),
+          fetchSeenCandidates().catch(() => [] as string[]),
+        ])
         setCandidates(result.candidates)
         setSource(result.source)
+        setSeen((prev) => new Set([...prev, ...seenIds]))
       } catch {
         /* mantém o que já está na tela */
       }

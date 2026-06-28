@@ -2,7 +2,15 @@ import express from 'express'
 import cors from 'cors'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { initDb, getStages, setStage, dbMode, dbReady } from './db.js'
+import {
+  initDb,
+  getStages,
+  setStage,
+  getSeenCandidates,
+  markCandidateSeen,
+  dbMode,
+  dbReady,
+} from './db.js'
 import { getCandidates, sheetMode } from './sheets.js'
 import { getAuditData } from './audit.js'
 import {
@@ -239,6 +247,31 @@ app.patch(
       res.json({ ok: true, id, stage })
     } catch (error) {
       console.error('[api] erro ao salvar etapa:', error)
+      res.status(500).json({ error: 'save_failed' })
+    }
+  },
+)
+
+// Cards de recrutamento já vistos por ESTE usuário (selo "Novo").
+app.get(
+  '/api/candidates/seen',
+  authFresh,
+  requireRole('admin', 'gerente_operacoes'),
+  async (req, res) => {
+    res.json({ seen: await getSeenCandidates(req.user.id) })
+  },
+)
+
+app.post(
+  '/api/candidates/:id/seen',
+  authFresh,
+  requireRole('admin', 'gerente_operacoes'),
+  async (req, res) => {
+    try {
+      await markCandidateSeen(req.user.id, req.params.id)
+      res.json({ ok: true })
+    } catch (error) {
+      console.error('[api] erro ao marcar visto:', error)
       res.status(500).json({ error: 'save_failed' })
     }
   },
