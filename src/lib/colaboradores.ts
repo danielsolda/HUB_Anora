@@ -66,3 +66,59 @@ export const STATUS_LABELS: Record<ColaboradorStatus, string> = {
   ativo: 'Ativo',
   desligado: 'Desligado',
 }
+
+// ── Registros da ficha (advertências, suspensões, férias, avaliações…) ──
+export type Registro = {
+  id: number
+  colaborador_id: number
+  tipo: string
+  data: string | null
+  data_fim: string | null
+  dias: number | null
+  categoria: string
+  titulo: string
+  descricao: string
+  created_at?: string
+}
+
+export type RegistroInput = {
+  tipo: string
+  data?: string | null
+  data_fim?: string | null
+  dias?: number | null
+  categoria?: string
+  titulo?: string
+  descricao?: string
+}
+
+export async function listRegistros(colaboradorId: number, tipo: string): Promise<Registro[]> {
+  return (
+    await json<{ registros: Registro[] }>(`/api/colaboradores/${colaboradorId}/registros?tipo=${encodeURIComponent(tipo)}`)
+  ).registros
+}
+
+export async function createRegistro(colaboradorId: number, input: RegistroInput): Promise<Registro> {
+  return (
+    await json<{ registro: Registro }>(`/api/colaboradores/${colaboradorId}/registros`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  ).registro
+}
+
+export async function updateRegistro(
+  colaboradorId: number,
+  registroId: number,
+  patch: Partial<RegistroInput>,
+): Promise<Registro> {
+  return (
+    await json<{ registro: Registro }>(`/api/colaboradores/${colaboradorId}/registros/${registroId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
+  ).registro
+}
+
+export async function deleteRegistro(colaboradorId: number, registroId: number): Promise<void> {
+  await json(`/api/colaboradores/${colaboradorId}/registros/${registroId}`, { method: 'DELETE' })
+}

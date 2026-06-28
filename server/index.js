@@ -12,6 +12,11 @@ import {
   createColaborador,
   updateColaborador,
   deleteColaborador,
+  listRegistros,
+  getRegistro,
+  createRegistro,
+  updateRegistro,
+  deleteRegistro,
 } from './colaboradores.js'
 import {
   initStages,
@@ -283,6 +288,44 @@ app.delete('/api/colaboradores/:id', authFresh, rhRole, async (req, res) => {
   const c = await getColaborador(req.params.id)
   if (!c) return res.status(404).json({ error: 'not_found' })
   await deleteColaborador(req.params.id)
+  res.json({ ok: true })
+})
+
+// Registros da ficha (advertências, suspensões, férias, avaliações…)
+app.get('/api/colaboradores/:id/registros', authFresh, rhRole, async (req, res) => {
+  try {
+    res.json({ registros: await listRegistros(req.params.id, req.query.tipo) })
+  } catch (error) {
+    console.error('[api] erro ao listar registros:', error)
+    res.status(500).json({ error: 'list_failed' })
+  }
+})
+
+app.post('/api/colaboradores/:id/registros', authFresh, rhRole, async (req, res) => {
+  if (!String(req.body?.tipo || '').trim()) return res.status(400).json({ error: 'missing_tipo' })
+  try {
+    res.json({ registro: await createRegistro(req.params.id, req.body || {}) })
+  } catch (error) {
+    console.error('[api] erro ao criar registro:', error)
+    res.status(500).json({ error: 'create_failed' })
+  }
+})
+
+app.patch('/api/colaboradores/:id/registros/:rid', authFresh, rhRole, async (req, res) => {
+  const r = await getRegistro(req.params.rid)
+  if (!r) return res.status(404).json({ error: 'not_found' })
+  try {
+    res.json({ registro: await updateRegistro(req.params.rid, req.body || {}) })
+  } catch (error) {
+    console.error('[api] erro ao atualizar registro:', error)
+    res.status(500).json({ error: 'update_failed' })
+  }
+})
+
+app.delete('/api/colaboradores/:id/registros/:rid', authFresh, rhRole, async (req, res) => {
+  const r = await getRegistro(req.params.rid)
+  if (!r) return res.status(404).json({ error: 'not_found' })
+  await deleteRegistro(req.params.rid)
   res.json({ ok: true })
 })
 

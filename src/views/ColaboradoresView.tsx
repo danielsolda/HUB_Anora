@@ -24,6 +24,7 @@ import {
   type ColaboradorInput,
   type ColaboradorStatus,
 } from '../lib/colaboradores'
+import { RegistroSection, REGISTRO_CONFIGS } from '../components/RegistroSection'
 
 const STATUS_STYLE: Record<ColaboradorStatus, string> = {
   experiencia: 'bg-sand/30 text-mauve',
@@ -274,6 +275,8 @@ function Ficha({
             </button>
           </div>
         </div>
+      ) : REGISTRO_CONFIGS[tab] ? (
+        <RegistroSection colaboradorId={colaborador.id} config={REGISTRO_CONFIGS[tab]} />
       ) : section ? (
         <SoonSection icon={section.icon} title={section.label} hint={'hint' in section ? section.hint : ''} />
       ) : null}
