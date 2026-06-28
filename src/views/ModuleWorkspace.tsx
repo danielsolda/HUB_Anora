@@ -3,6 +3,7 @@ import { DashboardEmbed } from '../components/DashboardEmbed'
 import { AuditoriaView } from './AuditoriaView'
 import { VideosView } from './VideosView'
 import { ColaboradoresView } from './ColaboradoresView'
+import { FinanceiroView } from './FinanceiroView'
 import { MenuIcon } from '../lib/icons'
 import { getModule, type Module, type Submodule } from '../data/modules'
 
@@ -30,6 +31,7 @@ function SubmoduleContent({ submodule }: { submodule: Submodule }) {
   if (c.kind === 'auditoria') return <AuditoriaView />
   if (c.kind === 'contratacao') return <KanbanBoard />
   if (c.kind === 'colaboradores') return <ColaboradoresView />
+  if (c.kind === 'financeiro') return <FinanceiroView tipo={c.tipo} />
   if (c.kind === 'videos') return <VideosView />
   return <ModulePlaceholder submodule={submodule} />
 }

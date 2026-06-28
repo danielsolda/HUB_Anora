@@ -43,6 +43,7 @@ export type SubmoduleContent =
   | { kind: 'auditoria' }
   | { kind: 'contratacao' }
   | { kind: 'colaboradores' }
+  | { kind: 'financeiro'; tipo: 'pagar' | 'receber' }
   | { kind: 'videos' }
 
 export type Submodule = {
@@ -147,8 +148,22 @@ export const modules: Module[] = [
     icon: WalletIcon,
     submodules: [
       soon('fluxo-caixa', 'Fluxo de caixa', ChartIcon, 'Entradas e saídas do caixa.'),
-      soon('contas-pagar', 'Contas a pagar', WalletIcon, 'Contas a pagar.'),
-      soon('contas-receber', 'Contas a receber', WalletIcon, 'Contas a receber.'),
+      {
+        id: 'contas-pagar',
+        label: 'Contas a pagar',
+        description: 'Lançamentos a pagar, com vencimento, valor e situação.',
+        icon: WalletIcon,
+        status: 'ativo',
+        content: { kind: 'financeiro', tipo: 'pagar' },
+      },
+      {
+        id: 'contas-receber',
+        label: 'Contas a receber',
+        description: 'Lançamentos a receber, com vencimento, valor e situação.',
+        icon: WalletIcon,
+        status: 'ativo',
+        content: { kind: 'financeiro', tipo: 'receber' },
+      },
       soon('notas-fiscais', 'Notas fiscais', FileTextIcon, 'Emissão e controle de notas fiscais.'),
       soon('fornecedores', 'Contratos com fornecedores', FileTextIcon, 'Contratos com fornecedores.'),
       soon('relatorios', 'Relatórios financeiros', ChartIcon, 'Relatórios financeiros.'),

@@ -1,0 +1,89 @@
+import { apiFetch } from '../auth/api'
+
+export type LancamentoTipo = 'pagar' | 'receber'
+export type LancamentoStatus = 'pendente' | 'pago' | 'cancelado'
+
+export type Lancamento = {
+  id: number
+  tipo: LancamentoTipo
+  descricao: string
+  /** Valor em reais. */
+  valor: number
+  vencimento: string | null
+  status: LancamentoStatus
+  categoria: string
+  contraparte: string
+  pago_em: string | null
+  forma: string
+  observacoes: string
+  created_at?: string
+}
+
+export type LancamentoInput = {
+  tipo?: LancamentoTipo
+  descricao?: string
+  valor?: number
+  vencimento?: string | null
+  status?: LancamentoStatus
+  categoria?: string
+  contraparte?: string
+  pago_em?: string | null
+  forma?: string
+  observacoes?: string
+}
+
+async function json<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await apiFetch(path, options)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return (await res.json()) as T
+}
+
+export async function listLancamentos(tipo: LancamentoTipo): Promise<Lancamento[]> {
+  return (await json<{ lancamentos: Lancamento[] }>(`/api/financeiro/lancamentos?tipo=${tipo}`)).lancamentos
+}
+
+export async function createLancamento(input: LancamentoInput): Promise<Lancamento> {
+  return (
+    await json<{ lancamento: Lancamento }>('/api/financeiro/lancamentos', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
+  ).lancamento
+}
+
+export async function updateLancamento(id: number, patch: LancamentoInput): Promise<Lancamento> {
+  return (
+    await json<{ lancamento: Lancamento }>(`/api/financeiro/lancamentos/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    })
+  ).lancamento
+}
+
+export async function deleteLancamento(id: number): Promise<void> {
+  await json(`/api/financeiro/lancamentos/${id}`, { method: 'DELETE' })
+}
+
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+export function formatBRL(value: number): string {
+  return BRL.format(value || 0)
+}
+
+export function formatDate(d: string | null): string {
+  if (!d) return '—'
+  const [y, m, dd] = d.split('-')
+  return `${dd}/${m}/${y}`
+}
+
+/** Hoje em 'YYYY-MM-DD' (local). */
+export function today(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+/** Status visível, derivando "vencido" de pendente com vencimento no passado. */
+export function effectiveStatus(l: Lancamento): LancamentoStatus | 'vencido' {
+  if (l.status === 'pendente' && l.vencimento && l.vencimento < today()) return 'vencido'
+  return l.status
+}

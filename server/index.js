@@ -27,6 +27,14 @@ import {
   deleteRegistro,
 } from './colaboradores.js'
 import {
+  initFinanceiro,
+  listLancamentos,
+  getLancamento,
+  createLancamento,
+  updateLancamento,
+  deleteLancamento,
+} from './financeiro.js'
+import {
   initStages,
   listStages,
   createStage,
@@ -362,6 +370,51 @@ app.delete('/api/colaboradores/:id/registros/:rid', authFresh, rhRole, async (re
   res.json({ ok: true })
 })
 
+// ── Financeiro: contas a pagar e a receber ──
+const finRole = requireRole('admin', 'financeiro')
+
+app.get('/api/financeiro/lancamentos', authFresh, finRole, async (req, res) => {
+  try {
+    res.json({ lancamentos: await listLancamentos(req.query.tipo) })
+  } catch (error) {
+    console.error('[api] erro ao listar lançamentos:', error)
+    res.status(500).json({ error: 'list_failed' })
+  }
+})
+
+app.post('/api/financeiro/lancamentos', authFresh, finRole, async (req, res) => {
+  try {
+    res.json({ lancamento: await createLancamento(req.body || {}) })
+  } catch (error) {
+    console.error('[api] erro ao criar lançamento:', error)
+    res.status(500).json({ error: 'create_failed' })
+  }
+})
+
+app.get('/api/financeiro/lancamentos/:id', authFresh, finRole, async (req, res) => {
+  const l = await getLancamento(req.params.id)
+  if (!l) return res.status(404).json({ error: 'not_found' })
+  res.json({ lancamento: l })
+})
+
+app.patch('/api/financeiro/lancamentos/:id', authFresh, finRole, async (req, res) => {
+  const l = await getLancamento(req.params.id)
+  if (!l) return res.status(404).json({ error: 'not_found' })
+  try {
+    res.json({ lancamento: await updateLancamento(req.params.id, req.body || {}) })
+  } catch (error) {
+    console.error('[api] erro ao atualizar lançamento:', error)
+    res.status(500).json({ error: 'update_failed' })
+  }
+})
+
+app.delete('/api/financeiro/lancamentos/:id', authFresh, finRole, async (req, res) => {
+  const l = await getLancamento(req.params.id)
+  if (!l) return res.status(404).json({ error: 'not_found' })
+  await deleteLancamento(req.params.id)
+  res.json({ ok: true })
+})
+
 // ── Frontend estático (produção) ──
 app.use(express.static(distDir))
 app.get('*', (_req, res) => {
@@ -374,6 +427,7 @@ initDb()
   .then(() => initUsers())
   .then(() => initStages())
   .then(() => initColaboradores())
+  .then(() => initFinanceiro())
   .catch((error) => {
     console.error('[boot] falha ao inicializar banco/usuários/etapas:', error)
   })
