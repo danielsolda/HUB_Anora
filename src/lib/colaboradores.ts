@@ -78,6 +78,7 @@ export type Registro = {
   categoria: string
   titulo: string
   descricao: string
+  link: string
   created_at?: string
 }
 
@@ -89,6 +90,7 @@ export type RegistroInput = {
   categoria?: string
   titulo?: string
   descricao?: string
+  link?: string
 }
 
 export async function listRegistros(colaboradorId: number, tipo: string): Promise<Registro[]> {

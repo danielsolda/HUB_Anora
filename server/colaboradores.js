@@ -70,10 +70,13 @@ export async function initColaboradores() {
       categoria      text NOT NULL DEFAULT '',
       titulo         text NOT NULL DEFAULT '',
       descricao      text NOT NULL DEFAULT '',
+      link           text NOT NULL DEFAULT '',
       created_at     timestamptz NOT NULL DEFAULT now(),
       updated_at     timestamptz NOT NULL DEFAULT now()
     )
   `)
+  // Campo de link para áreas baseadas em arquivo (holerites, contrato, documentos…).
+  await pool.query("ALTER TABLE colaborador_registros ADD COLUMN IF NOT EXISTS link text NOT NULL DEFAULT ''")
   await pool.query(
     'CREATE INDEX IF NOT EXISTS idx_registros_colab ON colaborador_registros (colaborador_id, tipo)',
   )
@@ -153,7 +156,7 @@ export async function deleteColaborador(id) {
 }
 
 // ── Registros da ficha (advertências, suspensões, férias, avaliações, …) ──
-const REG_FIELDS = ['tipo', 'data', 'data_fim', 'dias', 'categoria', 'titulo', 'descricao']
+const REG_FIELDS = ['tipo', 'data', 'data_fim', 'dias', 'categoria', 'titulo', 'descricao', 'link']
 
 function sanitizeRegistro(input, { partial } = {}) {
   const out = {}
@@ -176,7 +179,7 @@ const REG_SELECT = `
   SELECT id, colaborador_id, tipo,
          to_char(data, 'YYYY-MM-DD') AS data,
          to_char(data_fim, 'YYYY-MM-DD') AS data_fim,
-         dias, categoria, titulo, descricao, created_at
+         dias, categoria, titulo, descricao, link, created_at
   FROM colaborador_registros
 `
 
@@ -209,9 +212,9 @@ export async function createRegistro(colaboradorId, input) {
     return row
   }
   const { rows } = await pool.query(
-    `INSERT INTO colaborador_registros (colaborador_id, tipo, data, data_fim, dias, categoria, titulo, descricao)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-    [cid, data.tipo, data.data, data.data_fim, data.dias, data.categoria, data.titulo, data.descricao],
+    `INSERT INTO colaborador_registros (colaborador_id, tipo, data, data_fim, dias, categoria, titulo, descricao, link)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+    [cid, data.tipo, data.data, data.data_fim, data.dias, data.categoria, data.titulo, data.descricao, data.link || ''],
   )
   return getRegistro(rows[0].id)
 }

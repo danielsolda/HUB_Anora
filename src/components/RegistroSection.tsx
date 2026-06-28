@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PlusIcon, TrashIcon } from '../lib/icons'
+import { ExternalLinkIcon, PlusIcon, TrashIcon } from '../lib/icons'
 import {
   createRegistro,
   deleteRegistro,
@@ -10,9 +10,9 @@ import {
 } from '../lib/colaboradores'
 
 export type RegistroField = {
-  key: 'data' | 'data_fim' | 'dias' | 'categoria' | 'titulo' | 'descricao'
+  key: 'data' | 'data_fim' | 'dias' | 'categoria' | 'titulo' | 'descricao' | 'link'
   label: string
-  type: 'date' | 'number' | 'text' | 'textarea' | 'select'
+  type: 'date' | 'number' | 'text' | 'textarea' | 'select' | 'url'
   options?: string[]
 }
 
@@ -38,7 +38,7 @@ function periodo(r: Registro): string {
 }
 
 function emptyForm(config: RegistroConfig): RegistroInput {
-  const f: RegistroInput = { tipo: config.tipo, data: '', data_fim: '', dias: null, categoria: '', titulo: '', descricao: '' }
+  const f: RegistroInput = { tipo: config.tipo, data: '', data_fim: '', dias: null, categoria: '', titulo: '', descricao: '', link: '' }
   const sel = config.fields.find((x) => x.type === 'select')
   if (sel && sel.options?.length) (f as Record<string, unknown>)[sel.key] = sel.options[0]
   return f
@@ -83,6 +83,7 @@ export function RegistroSection({ colaboradorId, config }: { colaboradorId: numb
       categoria: r.categoria,
       titulo: r.titulo,
       descricao: r.descricao,
+      link: r.link ?? '',
     })
     setEditingId(r.id)
     setOpen(true)
@@ -203,6 +204,12 @@ export function RegistroSection({ colaboradorId, config }: { colaboradorId: numb
                   {r.descricao ? <p className="mt-2 whitespace-pre-wrap text-sm text-ink/70">{r.descricao}</p> : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
+                  {r.link ? (
+                    <a href={r.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1 text-xs font-medium text-cream transition-colors hover:bg-terracotta">
+                      Abrir
+                      <ExternalLinkIcon className="h-3.5 w-3.5" />
+                    </a>
+                  ) : null}
                   <button type="button" onClick={() => startEdit(r)} className="rounded-full px-2.5 py-1 text-xs font-medium text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink">
                     Editar
                   </button>
@@ -268,6 +275,57 @@ export const REGISTRO_CONFIGS: Record<string, RegistroConfig> = {
       { key: 'data', label: 'Data', type: 'date' },
       { key: 'categoria', label: 'Conceito', type: 'select', options: ['Abaixo do esperado', 'Dentro do esperado', 'Acima do esperado'] },
       { key: 'titulo', label: 'Resumo', type: 'text' },
+      { key: 'descricao', label: 'Detalhes', type: 'textarea' },
+    ],
+  },
+  // Áreas baseadas em arquivo (por link).
+  holerites: {
+    tipo: 'holerite',
+    title: 'Holerites',
+    addLabel: 'Novo holerite',
+    emptyHint: 'Nenhum holerite anexado.',
+    fields: [
+      { key: 'data', label: 'Competência', type: 'date' },
+      { key: 'titulo', label: 'Referência', type: 'text' },
+      { key: 'link', label: 'Link do arquivo', type: 'url' },
+      { key: 'descricao', label: 'Observações', type: 'textarea' },
+    ],
+  },
+  contrato: {
+    tipo: 'contrato',
+    title: 'Contrato de trabalho',
+    addLabel: 'Novo documento',
+    emptyHint: 'Nenhum documento de contrato.',
+    fields: [
+      { key: 'data', label: 'Data', type: 'date' },
+      { key: 'titulo', label: 'Documento', type: 'text' },
+      { key: 'link', label: 'Link do arquivo', type: 'url' },
+      { key: 'descricao', label: 'Observações', type: 'textarea' },
+    ],
+  },
+  documentos: {
+    tipo: 'documento',
+    title: 'Documentos trabalhistas',
+    addLabel: 'Novo documento',
+    emptyHint: 'Nenhum documento.',
+    fields: [
+      { key: 'data', label: 'Data', type: 'date' },
+      { key: 'titulo', label: 'Documento', type: 'text' },
+      { key: 'categoria', label: 'Tipo', type: 'text' },
+      { key: 'link', label: 'Link do arquivo', type: 'url' },
+      { key: 'descricao', label: 'Observações', type: 'textarea' },
+    ],
+  },
+  treinamentos: {
+    tipo: 'treinamento',
+    title: 'Treinamentos e certificações',
+    addLabel: 'Novo registro',
+    emptyHint: 'Nenhum treinamento registrado.',
+    fields: [
+      { key: 'data', label: 'Data', type: 'date' },
+      { key: 'categoria', label: 'Tipo', type: 'select', options: ['Treinamento', 'Certificado', 'Material'] },
+      { key: 'titulo', label: 'Nome', type: 'text' },
+      { key: 'link', label: 'Link (certificado/material)', type: 'url' },
       { key: 'descricao', label: 'Detalhes', type: 'textarea' },
     ],
   },
