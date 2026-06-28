@@ -34,6 +34,11 @@ import {
   updateLancamento,
   deleteLancamento,
   getFluxo,
+  listDocumentos,
+  getDocumento,
+  createDocumento,
+  updateDocumento,
+  deleteDocumento,
 } from './financeiro.js'
 import {
   initStages,
@@ -423,6 +428,44 @@ app.get('/api/financeiro/fluxo', authFresh, finRole, async (_req, res) => {
     console.error('[api] erro no fluxo de caixa:', error)
     res.status(500).json({ error: 'fluxo_failed' })
   }
+})
+
+// Documentos por link (notas fiscais, contratos, contábeis)
+app.get('/api/financeiro/documentos', authFresh, finRole, async (req, res) => {
+  try {
+    res.json({ documentos: await listDocumentos(req.query.tipo) })
+  } catch (error) {
+    console.error('[api] erro ao listar documentos:', error)
+    res.status(500).json({ error: 'list_failed' })
+  }
+})
+
+app.post('/api/financeiro/documentos', authFresh, finRole, async (req, res) => {
+  if (!String(req.body?.tipo || '').trim()) return res.status(400).json({ error: 'missing_tipo' })
+  try {
+    res.json({ documento: await createDocumento(req.body || {}) })
+  } catch (error) {
+    console.error('[api] erro ao criar documento:', error)
+    res.status(500).json({ error: 'create_failed' })
+  }
+})
+
+app.patch('/api/financeiro/documentos/:id', authFresh, finRole, async (req, res) => {
+  const d = await getDocumento(req.params.id)
+  if (!d) return res.status(404).json({ error: 'not_found' })
+  try {
+    res.json({ documento: await updateDocumento(req.params.id, req.body || {}) })
+  } catch (error) {
+    console.error('[api] erro ao atualizar documento:', error)
+    res.status(500).json({ error: 'update_failed' })
+  }
+})
+
+app.delete('/api/financeiro/documentos/:id', authFresh, finRole, async (req, res) => {
+  const d = await getDocumento(req.params.id)
+  if (!d) return res.status(404).json({ error: 'not_found' })
+  await deleteDocumento(req.params.id)
+  res.json({ ok: true })
 })
 
 // ── Frontend estático (produção) ──

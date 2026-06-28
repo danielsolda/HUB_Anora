@@ -107,6 +107,22 @@ export async function initFinanceiro() {
   await pool.query(
     'CREATE INDEX IF NOT EXISTS idx_fin_tipo ON financeiro_lancamentos (tipo, vencimento)',
   )
+  // Documentos por link (notas fiscais, contratos com fornecedores, contábeis).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS financeiro_documentos (
+      id          serial PRIMARY KEY,
+      tipo        text NOT NULL,
+      titulo      text NOT NULL DEFAULT '',
+      link        text NOT NULL DEFAULT '',
+      data        date,
+      categoria   text NOT NULL DEFAULT '',
+      contraparte text NOT NULL DEFAULT '',
+      observacoes text NOT NULL DEFAULT '',
+      created_at  timestamptz NOT NULL DEFAULT now(),
+      updated_at  timestamptz NOT NULL DEFAULT now()
+    )
+  `)
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_fin_doc_tipo ON financeiro_documentos (tipo, data)')
 }
 
 const SELECT = `
@@ -303,4 +319,95 @@ export async function getFluxo() {
         saldo: round2(b.entradas - b.saidas),
       }))
   return { realizado: toSeries(realizado), previsto: toSeries(previsto) }
+}
+
+// ── Documentos por link (notas fiscais, contratos, contábeis) ──
+const DOC_FIELDS = ['tipo', 'titulo', 'link', 'data', 'categoria', 'contraparte', 'observacoes']
+const memDoc = new Map()
+let memDocSeq = 1
+
+function sanitizeDoc(input, { partial } = {}) {
+  const out = {}
+  for (const f of DOC_FIELDS) {
+    if (partial && input[f] === undefined) continue
+    out[f] = f === 'data' ? dateOrNull(input[f]) : clean(input[f])
+  }
+  return out
+}
+
+const DOC_SELECT = `
+  SELECT id, tipo, titulo, link, to_char(data, 'YYYY-MM-DD') AS data,
+         categoria, contraparte, observacoes, created_at
+  FROM financeiro_documentos
+`
+
+export async function listDocumentos(tipo) {
+  const pool = getPool()
+  if (!pool) {
+    return [...memDoc.values()]
+      .filter((d) => !tipo || d.tipo === tipo)
+      .sort((a, b) => (b.data || '').localeCompare(a.data || '') || b.id - a.id)
+  }
+  const params = []
+  let where = ''
+  if (tipo) {
+    params.push(tipo)
+    where = 'WHERE tipo = $1'
+  }
+  const { rows } = await pool.query(`${DOC_SELECT} ${where} ORDER BY data DESC NULLS LAST, id DESC`, params)
+  return rows
+}
+
+export async function getDocumento(id) {
+  const pool = getPool()
+  if (!pool) return memDoc.get(Number(id)) || null
+  const { rows } = await pool.query(`${DOC_SELECT} WHERE id = $1`, [id])
+  return rows[0] || null
+}
+
+export async function createDocumento(input) {
+  const data = sanitizeDoc(input)
+  if (!data.tipo) throw new Error('missing_tipo')
+  const pool = getPool()
+  if (!pool) {
+    const row = { id: memDocSeq++, ...data, created_at: new Date().toISOString() }
+    memDoc.set(row.id, row)
+    return row
+  }
+  const { rows } = await pool.query(
+    `INSERT INTO financeiro_documentos (tipo, titulo, link, data, categoria, contraparte, observacoes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+    [data.tipo, data.titulo || '', data.link || '', data.data ?? null, data.categoria || '', data.contraparte || '', data.observacoes || ''],
+  )
+  return getDocumento(rows[0].id)
+}
+
+export async function updateDocumento(id, input) {
+  const data = sanitizeDoc(input, { partial: true })
+  delete data.tipo
+  const keys = Object.keys(data)
+  if (keys.length === 0) return getDocumento(id)
+  const pool = getPool()
+  if (!pool) {
+    const row = memDoc.get(Number(id))
+    if (row) Object.assign(row, data)
+    return row || null
+  }
+  const sets = keys.map((k, i) => `${k} = $${i + 1}`)
+  const values = keys.map((k) => data[k])
+  values.push(id)
+  await pool.query(
+    `UPDATE financeiro_documentos SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length}`,
+    values,
+  )
+  return getDocumento(id)
+}
+
+export async function deleteDocumento(id) {
+  const pool = getPool()
+  if (!pool) {
+    memDoc.delete(Number(id))
+    return
+  }
+  await pool.query('DELETE FROM financeiro_documentos WHERE id = $1', [id])
 }

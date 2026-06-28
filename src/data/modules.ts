@@ -46,6 +46,7 @@ export type SubmoduleContent =
   | { kind: 'financeiro'; tipo: 'pagar' | 'receber' }
   | { kind: 'fluxo' }
   | { kind: 'relatorios' }
+  | { kind: 'documentos-fin'; tipo: 'nota_fiscal' | 'contrato_fornecedor' | 'documento_contabil' }
   | { kind: 'videos' }
 
 export type Submodule = {
@@ -173,8 +174,22 @@ export const modules: Module[] = [
         status: 'ativo',
         content: { kind: 'financeiro', tipo: 'receber' },
       },
-      soon('notas-fiscais', 'Notas fiscais', FileTextIcon, 'Emissão e controle de notas fiscais.'),
-      soon('fornecedores', 'Contratos com fornecedores', FileTextIcon, 'Contratos com fornecedores.'),
+      {
+        id: 'notas-fiscais',
+        label: 'Notas fiscais',
+        description: 'Notas fiscais organizadas por link, com fornecedor e data.',
+        icon: FileTextIcon,
+        status: 'ativo',
+        content: { kind: 'documentos-fin', tipo: 'nota_fiscal' },
+      },
+      {
+        id: 'fornecedores',
+        label: 'Contratos com fornecedores',
+        description: 'Contratos com fornecedores, organizados por link.',
+        icon: FileTextIcon,
+        status: 'ativo',
+        content: { kind: 'documentos-fin', tipo: 'contrato_fornecedor' },
+      },
       {
         id: 'relatorios',
         label: 'Relatórios financeiros',
@@ -183,7 +198,14 @@ export const modules: Module[] = [
         status: 'ativo',
         content: { kind: 'relatorios' },
       },
-      soon('contabeis', 'Documentos contábeis', FolderIcon, 'Documentos contábeis.'),
+      {
+        id: 'contabeis',
+        label: 'Documentos contábeis',
+        description: 'Balancetes, guias e documentos contábeis, por link.',
+        icon: FolderIcon,
+        status: 'ativo',
+        content: { kind: 'documentos-fin', tipo: 'documento_contabil' },
+      },
     ],
   },
   {

@@ -84,6 +84,47 @@ export async function fetchFluxo(): Promise<Fluxo> {
   return json<Fluxo>('/api/financeiro/fluxo')
 }
 
+// ── Documentos por link (notas fiscais, contratos, contábeis) ──
+export type DocumentoTipo = 'nota_fiscal' | 'contrato_fornecedor' | 'documento_contabil'
+
+export type Documento = {
+  id: number
+  tipo: DocumentoTipo
+  titulo: string
+  link: string
+  data: string | null
+  categoria: string
+  contraparte: string
+  observacoes: string
+  created_at?: string
+}
+
+export type DocumentoInput = {
+  tipo?: DocumentoTipo
+  titulo?: string
+  link?: string
+  data?: string | null
+  categoria?: string
+  contraparte?: string
+  observacoes?: string
+}
+
+export async function listDocumentos(tipo: DocumentoTipo): Promise<Documento[]> {
+  return (await json<{ documentos: Documento[] }>(`/api/financeiro/documentos?tipo=${tipo}`)).documentos
+}
+
+export async function createDocumento(input: DocumentoInput): Promise<Documento> {
+  return (await json<{ documento: Documento }>('/api/financeiro/documentos', { method: 'POST', body: JSON.stringify(input) })).documento
+}
+
+export async function updateDocumento(id: number, patch: DocumentoInput): Promise<Documento> {
+  return (await json<{ documento: Documento }>(`/api/financeiro/documentos/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })).documento
+}
+
+export async function deleteDocumento(id: number): Promise<void> {
+  await json(`/api/financeiro/documentos/${id}`, { method: 'DELETE' })
+}
+
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
 /** 'YYYY-MM' → 'Ago/26'. */
 export function formatMes(mes: string): string {
