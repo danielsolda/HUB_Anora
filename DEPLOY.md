@@ -169,8 +169,12 @@ formulário aparece como card; mover um card grava a etapa no PostgreSQL.
 | GET    | `/api/audit`                   | auditoria: série mensal + linhas (admin/comercial) |
 | GET    | `/api/candidates`              | candidatos + etapa salva (admin/operações) |
 | PATCH  | `/api/candidates/:id/stage`    | salva a etapa de um card (admin/operações) |
+| GET    | `/api/colaboradores`           | lista colaboradores (admin/operações)      |
+| POST   | `/api/colaboradores`           | cria colaborador (admin/operações)         |
+| GET/PATCH/DELETE | `/api/colaboradores/:id` | lê/edita/remove colaborador (admin/operações) |
 
 As etapas do Kanban são configuráveis (engrenagem do quadro) e ficam no banco
-(`kanban_stages`), começando com as quatro padrão.
+(`kanban_stages`), começando com as quatro padrão. Os colaboradores ficam na
+tabela `colaboradores` (RH & Desenvolvimento).
 Perfis: `admin`, `gerente_comercial`, `gerente_operacoes`, `financeiro`,
 `biomedica`, `assistente_comercial`, `recepcionista`.

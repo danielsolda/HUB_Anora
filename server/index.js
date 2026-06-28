@@ -6,6 +6,14 @@ import { initDb, getStages, setStage, dbMode, dbReady } from './db.js'
 import { getCandidates, sheetMode } from './sheets.js'
 import { getAuditData } from './audit.js'
 import {
+  initColaboradores,
+  listColaboradores,
+  getColaborador,
+  createColaborador,
+  updateColaborador,
+  deleteColaborador,
+} from './colaboradores.js'
+import {
   initStages,
   listStages,
   createStage,
@@ -210,6 +218,53 @@ app.patch(
   },
 )
 
+// ── Colaboradores (RH & Desenvolvimento) ──
+const rhRole = requireRole('admin', 'gerente_operacoes')
+
+app.get('/api/colaboradores', requireAuth, rhRole, async (_req, res) => {
+  try {
+    res.json({ colaboradores: await listColaboradores() })
+  } catch (error) {
+    console.error('[api] erro ao listar colaboradores:', error)
+    res.status(500).json({ error: 'list_failed' })
+  }
+})
+
+app.post('/api/colaboradores', requireAuth, rhRole, async (req, res) => {
+  const nome = String(req.body?.nome || '').trim()
+  if (!nome) return res.status(400).json({ error: 'missing_nome' })
+  try {
+    res.json({ colaborador: await createColaborador(req.body || {}) })
+  } catch (error) {
+    console.error('[api] erro ao criar colaborador:', error)
+    res.status(500).json({ error: 'create_failed' })
+  }
+})
+
+app.get('/api/colaboradores/:id', requireAuth, rhRole, async (req, res) => {
+  const c = await getColaborador(req.params.id)
+  if (!c) return res.status(404).json({ error: 'not_found' })
+  res.json({ colaborador: c })
+})
+
+app.patch('/api/colaboradores/:id', requireAuth, rhRole, async (req, res) => {
+  const c = await getColaborador(req.params.id)
+  if (!c) return res.status(404).json({ error: 'not_found' })
+  try {
+    res.json({ colaborador: await updateColaborador(req.params.id, req.body || {}) })
+  } catch (error) {
+    console.error('[api] erro ao atualizar colaborador:', error)
+    res.status(500).json({ error: 'update_failed' })
+  }
+})
+
+app.delete('/api/colaboradores/:id', requireAuth, rhRole, async (req, res) => {
+  const c = await getColaborador(req.params.id)
+  if (!c) return res.status(404).json({ error: 'not_found' })
+  await deleteColaborador(req.params.id)
+  res.json({ ok: true })
+})
+
 // ── Frontend estático (produção) ──
 app.use(express.static(distDir))
 app.get('*', (_req, res) => {
@@ -221,6 +276,7 @@ const port = process.env.PORT || 8787
 initDb()
   .then(() => initUsers())
   .then(() => initStages())
+  .then(() => initColaboradores())
   .catch((error) => {
     console.error('[boot] falha ao inicializar banco/usuários/etapas:', error)
   })

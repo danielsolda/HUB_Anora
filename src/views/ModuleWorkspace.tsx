@@ -2,6 +2,7 @@ import { KanbanBoard } from '../components/KanbanBoard'
 import { DashboardEmbed } from '../components/DashboardEmbed'
 import { AuditoriaView } from './AuditoriaView'
 import { VideosView } from './VideosView'
+import { ColaboradoresView } from './ColaboradoresView'
 import { MenuIcon } from '../lib/icons'
 import { getModule, type Module, type Submodule } from '../data/modules'
 
@@ -28,6 +29,7 @@ function SubmoduleContent({ submodule }: { submodule: Submodule }) {
   if (c.kind === 'embed') return <DashboardEmbed title={submodule.label} src={c.url} fullHeight />
   if (c.kind === 'auditoria') return <AuditoriaView />
   if (c.kind === 'contratacao') return <KanbanBoard />
+  if (c.kind === 'colaboradores') return <ColaboradoresView />
   if (c.kind === 'videos') return <VideosView />
   return <ModulePlaceholder submodule={submodule} />
 }

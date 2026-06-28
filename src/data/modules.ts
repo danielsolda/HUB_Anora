@@ -42,6 +42,7 @@ export type SubmoduleContent =
   | { kind: 'embed'; url: string }
   | { kind: 'auditoria' }
   | { kind: 'contratacao' }
+  | { kind: 'colaboradores' }
   | { kind: 'videos' }
 
 export type Submodule = {
@@ -117,9 +118,17 @@ export const modules: Module[] = [
   {
     id: 'rh',
     label: 'RH & Desenvolvimento',
-    description: 'Pessoas, contratos, treinamentos e rotina trabalhista.',
+    description: 'O time da clínica, contratos, treinamentos e rotina trabalhista.',
     icon: BriefcaseIcon,
     submodules: [
+      {
+        id: 'colaboradores',
+        label: 'Colaboradores',
+        description: 'Cadastro do time, com a ficha completa de cada pessoa.',
+        icon: UsersIcon,
+        status: 'ativo',
+        content: { kind: 'colaboradores' },
+      },
       {
         id: 'recrutamento',
         label: 'Recrutamento',
@@ -128,16 +137,7 @@ export const modules: Module[] = [
         status: 'ativo',
         content: { kind: 'contratacao' },
       },
-      soon('historico', 'Histórico do colaborador', FolderIcon, 'Histórico completo de cada colaborador.'),
-      soon('contrato', 'Contrato de trabalho', FileTextIcon, 'Contratos de trabalho.'),
-      soon('holerites', 'Holerites', WalletIcon, 'Holerites da equipe.'),
-      soon('avaliacoes-desempenho', 'Avaliações de desempenho', AwardIcon, 'Avaliações de desempenho.'),
-      soon('advertencias', 'Advertências', BellIcon, 'Registro de advertências.'),
-      soon('suspensoes', 'Suspensões', BellIcon, 'Registro de suspensões.'),
-      soon('ferias', 'Férias', CalendarIcon, 'Controle de férias.'),
-      soon('banco-horas', 'Banco de horas', CalendarIcon, 'Banco de horas da equipe.'),
-      soon('doc-trabalhistas', 'Documentos trabalhistas', FolderIcon, 'Documentos trabalhistas.'),
-      soon('treinamentos', 'Treinamentos e certificações', AwardIcon, 'Histórico, certificados e materiais de treinamento.'),
+      soon('treinamentos', 'Treinamentos e certificações', AwardIcon, 'Histórico, certificados e materiais de treinamento da equipe.'),
     ],
   },
   {
