@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronRightIcon,
   FileTextIcon,
   FolderIcon,
   FolderPlusIcon,
-  PencilIcon,
+  MoreVerticalIcon,
   PlusIcon,
   RefreshIcon,
-  TrashIcon,
   UploadIcon,
 } from '../lib/icons'
 import { DocumentoModal } from '../components/DocumentoModal'
@@ -38,24 +37,82 @@ function docPreview(d: Documento): DocPreview | null {
   return resolveDoc(d.link)
 }
 
-/** Miniatura do documento (thumbnail do Drive/imagem), com fallback para ícone. */
-function Thumb({ url }: { url: string | null }) {
-  const [err, setErr] = useState(false)
-  if (!url || err) {
+/** Menu de três pontos (estilo Drive), fecha ao clicar fora ou apertar Esc. */
+function Kebab({ items }: { items: { label: string; onClick: () => void; danger?: boolean }[] }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        aria-label="Opções"
+        onClick={(e) => {
+          e.stopPropagation()
+          setOpen((v) => !v)
+        }}
+        className="rounded-full p-1.5 text-ink/45 transition-colors hover:bg-ink/8 hover:text-ink"
+      >
+        <MoreVerticalIcon className="h-4 w-4" />
+      </button>
+      {open ? (
+        <>
+          <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setOpen(false) }} aria-hidden="true" />
+          <div className="absolute right-0 top-full z-20 mt-1 min-w-[9rem] overflow-hidden rounded-xl border border-ink/10 bg-cream py-1 shadow-card-hover">
+            {items.map((it) => (
+              <button
+                key={it.label}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setOpen(false); it.onClick() }}
+                className={`block w-full px-3.5 py-1.5 text-left text-sm transition-colors hover:bg-ink/5 ${it.danger ? 'text-terracotta' : 'text-ink/75'}`}
+              >
+                {it.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
+/** Miniatura grande do documento no card: imagem/thumbnail → iframe → ícone. */
+function CardPreview({ d }: { d: Documento }) {
+  const prev = docPreview(d)
+  const [imgErr, setImgErr] = useState(false)
+  if (!prev) {
     return (
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-linen text-mauve">
-        <FileTextIcon className="h-6 w-6" />
-      </span>
+      <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-mauve">
+        <FileTextIcon className="h-9 w-9" />
+        <span className="text-xs text-ink/40">Sem arquivo</span>
+      </div>
+    )
+  }
+  if (prev.thumbnail && !imgErr) {
+    return (
+      <img
+        src={prev.thumbnail}
+        alt=""
+        loading="lazy"
+        onError={() => setImgErr(true)}
+        className="h-full w-full object-cover object-top"
+      />
+    )
+  }
+  if ((prev.kind === 'drive' || prev.kind === 'pdf') && prev.embed) {
+    return (
+      <iframe
+        src={prev.embed}
+        title=""
+        tabIndex={-1}
+        loading="lazy"
+        className="pointer-events-none h-full w-full border-0 bg-white"
+      />
     )
   }
   return (
-    <img
-      src={url}
-      alt=""
-      loading="lazy"
-      onError={() => setErr(true)}
-      className="h-14 w-14 shrink-0 rounded-lg border border-ink/10 bg-linen object-cover"
-    />
+    <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-mauve">
+      <FileTextIcon className="h-9 w-9" />
+      <span className="text-xs text-ink/40">Prévia indisponível</span>
+    </div>
   )
 }
 
@@ -94,6 +151,9 @@ export function DocumentosFinView({ tipo }: { tipo: DocumentoTipo }) {
   const [previewDoc, setPreviewDoc] = useState<Documento | null>(null)
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
+  const [draggingId, setDraggingId] = useState<number | null>(null)
+  const [dropTarget, setDropTarget] = useState<number | 'root' | null>(null)
+  const draggingRef = useRef<number | null>(null)
 
   const L = LABELS[tipo]
 
@@ -121,7 +181,6 @@ export function DocumentosFinView({ tipo }: { tipo: DocumentoTipo }) {
 
   const pastaById = useMemo(() => new Map(pastas.map((p) => [p.id, p])), [pastas])
 
-  /** Caminho da raiz até a pasta (para o breadcrumb). */
   function pathTo(id: number | null): Pasta[] {
     const out: Pasta[] = []
     let cur = id
@@ -146,13 +205,6 @@ export function DocumentosFinView({ tipo }: { tipo: DocumentoTipo }) {
   const docsHere = list.filter((d) => (d.pasta_id ?? null) === currentFolder)
   const shownDocs = searching ? list.filter(matchDoc) : docsHere
 
-  function folderCount(id: number): number {
-    const docs = list.filter((d) => (d.pasta_id ?? null) === id).length
-    const subs = pastas.filter((p) => (p.parent_id ?? null) === id).length
-    return docs + subs
-  }
-
-  /** Lista achatada de pastas (com indentação) para o seletor do formulário. */
   const folderOptions = useMemo(() => {
     const out: { id: number; label: string }[] = []
     const walk = (parent: number | null, depth: number) => {
@@ -173,6 +225,36 @@ export function DocumentosFinView({ tipo }: { tipo: DocumentoTipo }) {
     setShowForm(false)
     setShowNewFolder(false)
     setBusca('')
+  }
+
+  // ── Arrastar documento para dentro de uma pasta ──
+  function onDragStartDoc(id: number) {
+    draggingRef.current = id
+    setDraggingId(id)
+  }
+  function onDragEndDoc() {
+    draggingRef.current = null
+    setDraggingId(null)
+    setDropTarget(null)
+  }
+  function allowDrop(e: React.DragEvent, target: number | 'root') {
+    if (draggingRef.current == null) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dropTarget !== target) setDropTarget(target)
+  }
+  async function moveDocTo(folderId: number | null) {
+    const id = draggingRef.current
+    onDragEndDoc()
+    if (id == null) return
+    const doc = list.find((d) => d.id === id)
+    if (!doc || (doc.pasta_id ?? null) === folderId) return
+    setList((prev) => prev.map((d) => (d.id === id ? { ...d, pasta_id: folderId } : d)))
+    try {
+      await updateDocumento(id, { pasta_id: folderId })
+    } catch {
+      await load()
+    }
   }
 
   function startAdd() {
@@ -296,10 +378,11 @@ export function DocumentosFinView({ tipo }: { tipo: DocumentoTipo }) {
 
   const field = 'mt-1.5 w-full rounded-lg border border-ink/15 bg-cream px-3 py-2 text-sm text-ink outline-none focus:border-terracotta/50'
   const label = 'text-sm font-medium text-ink/70'
+  const dragging = draggingId != null
 
   return (
     <div className="flex-1 overflow-y-auto px-5 py-8 sm:px-8">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-5xl">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.32em] text-terracotta">Financeiro</p>
@@ -321,16 +404,30 @@ export function DocumentosFinView({ tipo }: { tipo: DocumentoTipo }) {
           </div>
         </header>
 
-        {/* Breadcrumb de pastas */}
+        {/* Breadcrumb — também aceita soltar documentos para mover de pasta */}
         <nav className="mt-5 flex flex-wrap items-center gap-1 text-sm">
-          <button type="button" onClick={() => goTo(null)} className={`inline-flex items-center gap-1 rounded-full px-2 py-1 transition-colors hover:bg-ink/5 ${currentFolder === null ? 'font-semibold text-ink' : 'text-ink/60'}`}>
+          <button
+            type="button"
+            onClick={() => goTo(null)}
+            onDragOver={(e) => allowDrop(e, 'root')}
+            onDragLeave={() => setDropTarget((t) => (t === 'root' ? null : t))}
+            onDrop={() => moveDocTo(null)}
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 transition-colors ${dropTarget === 'root' ? 'bg-terracotta/15 ring-1 ring-terracotta' : 'hover:bg-ink/5'} ${currentFolder === null ? 'font-semibold text-ink' : 'text-ink/60'}`}
+          >
             <FolderIcon className="h-4 w-4" />
             Todos
           </button>
           {breadcrumb.map((p, i) => (
             <span key={p.id} className="flex items-center gap-1">
               <ChevronRightIcon className="h-4 w-4 text-ink/30" />
-              <button type="button" onClick={() => goTo(p.id)} className={`rounded-full px-2 py-1 transition-colors hover:bg-ink/5 ${i === breadcrumb.length - 1 ? 'font-semibold text-ink' : 'text-ink/60'}`}>
+              <button
+                type="button"
+                onClick={() => goTo(p.id)}
+                onDragOver={(e) => allowDrop(e, p.id)}
+                onDragLeave={() => setDropTarget((t) => (t === p.id ? null : t))}
+                onDrop={() => moveDocTo(p.id)}
+                className={`rounded-full px-2 py-1 transition-colors ${dropTarget === p.id ? 'bg-terracotta/15 ring-1 ring-terracotta' : 'hover:bg-ink/5'} ${i === breadcrumb.length - 1 ? 'font-semibold text-ink' : 'text-ink/60'}`}
+              >
                 {p.nome}
               </button>
             </span>
@@ -362,7 +459,6 @@ export function DocumentosFinView({ tipo }: { tipo: DocumentoTipo }) {
               <input type="text" required value={form.titulo ?? ''} onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))} className={field} placeholder={L.tituloPh} />
             </label>
 
-            {/* Origem: link externo ou upload de arquivo */}
             <div className="sm:col-span-2">
               <span className={label}>Arquivo</span>
               <div className="mt-1.5 inline-flex rounded-full border border-ink/15 bg-cream p-0.5 text-sm">
@@ -432,35 +528,54 @@ export function DocumentosFinView({ tipo }: { tipo: DocumentoTipo }) {
           <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar em todas as pastas…" className="w-full max-w-xs rounded-full border border-ink/15 bg-cream/70 px-4 py-1.5 text-sm text-ink placeholder:text-ink/40 outline-none focus:border-terracotta/40" />
         </div>
 
-        {/* Pastas da pasta atual (escondidas durante a busca) */}
-        {!searching && childFolders.length > 0 ? (
-          <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-            {childFolders.map((p) => (
-              <div key={p.id} className="group relative rounded-xl2 border border-ink/10 bg-cream shadow-card">
-                <button type="button" onClick={() => goTo(p.id)} className="flex w-full items-center gap-2.5 p-3 pr-[4.5rem] text-left">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-linen text-terracotta">
-                    <FolderIcon className="h-5 w-5" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate font-semibold text-ink group-hover:text-terracotta">{p.nome}</span>
-                    <span className="block text-xs text-ink/50">{folderCount(p.id)} {folderCount(p.id) === 1 ? 'item' : 'itens'}</span>
-                  </span>
-                </button>
-                <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
-                  <button type="button" onClick={() => renameFolder(p)} aria-label="Renomear pasta" className="rounded-full p-1.5 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink">
-                    <PencilIcon className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => removeFolder(p)} aria-label="Remover pasta" className="rounded-full p-1.5 text-ink/40 transition-colors hover:bg-terracotta/10 hover:text-terracotta">
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+        {dragging ? (
+          <p className="mt-4 text-center text-xs font-medium text-terracotta">Solte sobre uma pasta (ou no caminho acima) para mover.</p>
         ) : null}
 
-        {/* Documentos */}
-        <div className="mt-5 space-y-2.5">
+        {/* Pastas — grade de blocos, cada um aceita soltar documentos */}
+        {!searching && childFolders.length > 0 ? (
+          <section className="mt-5">
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/40">Pastas</h2>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+              {childFolders.map((p) => (
+                <div
+                  key={p.id}
+                  onDragOver={(e) => allowDrop(e, p.id)}
+                  onDragLeave={() => setDropTarget((t) => (t === p.id ? null : t))}
+                  onDrop={() => moveDocTo(p.id)}
+                  className={`group flex items-center gap-2 rounded-xl border bg-cream px-3 py-2.5 shadow-card transition-colors ${
+                    dropTarget === p.id
+                      ? 'border-terracotta ring-2 ring-terracotta/40'
+                      : dragging
+                        ? 'border-dashed border-terracotta/40'
+                        : 'border-ink/10'
+                  }`}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-linen text-terracotta">
+                    <FolderIcon className="h-5 w-5" />
+                  </span>
+                  <button type="button" onClick={() => goTo(p.id)} className="min-w-0 flex-1 truncate text-left text-sm font-medium text-ink transition-colors group-hover:text-terracotta" title={p.nome}>
+                    {p.nome}
+                  </button>
+                  <Kebab
+                    items={[
+                      { label: 'Abrir', onClick: () => goTo(p.id) },
+                      { label: 'Renomear', onClick: () => renameFolder(p) },
+                      { label: 'Remover', onClick: () => removeFolder(p), danger: true },
+                    ]}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {/* Documentos — grade de cards com miniatura (estilo Drive) */}
+        <section className="mt-6">
+          {!searching && childFolders.length > 0 && shownDocs.length > 0 ? (
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/40">Arquivos</h2>
+          ) : null}
+
           {status === 'loading' ? (
             <p className="py-12 text-center text-sm text-ink/45">Carregando…</p>
           ) : status === 'error' ? (
@@ -472,49 +587,53 @@ export function DocumentosFinView({ tipo }: { tipo: DocumentoTipo }) {
               </div>
             )
           ) : (
-            shownDocs.map((d) => {
-              const prev = docPreview(d)
-              return (
-                <div key={d.id} className="flex flex-wrap items-center gap-3 rounded-xl2 border border-ink/10 bg-cream p-3 shadow-card">
-                  <button
-                    type="button"
-                    onClick={() => prev && setPreviewDoc(d)}
-                    disabled={!prev}
-                    title={prev ? 'Ver documento' : undefined}
-                    className={`group flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left ${prev ? 'cursor-pointer' : 'cursor-default'}`}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {shownDocs.map((d) => {
+                const prev = docPreview(d)
+                const meta = [d.contraparte, d.data ? formatDate(d.data) : '', d.arquivo ? formatBytes(d.arquivo.tamanho) : '']
+                  .filter(Boolean)
+                  .join(' · ')
+                return (
+                  <article
+                    key={d.id}
+                    draggable
+                    onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(d.id)); onDragStartDoc(d.id) }}
+                    onDragEnd={onDragEndDoc}
+                    className={`group flex select-none flex-col overflow-hidden rounded-xl2 border border-ink/10 bg-cream shadow-card transition-all hover:shadow-card-hover ${draggingId === d.id ? 'opacity-40' : ''}`}
                   >
-                    <Thumb url={prev?.thumbnail ?? null} />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className={`truncate font-semibold text-ink ${prev ? 'group-hover:text-terracotta' : ''}`}>{d.titulo || '—'}</span>
-                        {d.arquivo ? <span className="rounded-full bg-olive/10 px-2 py-0.5 text-xs font-medium text-olive">Arquivo</span> : null}
-                        {d.categoria ? <span className="rounded-full bg-linen px-2 py-0.5 text-xs font-medium text-mauve">{d.categoria}</span> : null}
+                    <div className="flex items-center gap-1.5 border-b border-ink/8 px-2.5 py-2">
+                      <FileTextIcon className="h-4 w-4 shrink-0 text-mauve" />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink" title={d.titulo}>{d.titulo || '—'}</span>
+                      <Kebab
+                        items={[
+                          ...(prev ? [{ label: 'Ver', onClick: () => setPreviewDoc(d) }] : []),
+                          { label: 'Editar', onClick: () => startEdit(d) },
+                          { label: 'Remover', onClick: () => remove(d), danger: true },
+                        ]}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => prev && setPreviewDoc(d)}
+                      disabled={!prev}
+                      title={prev ? 'Ver documento' : undefined}
+                      className={`relative block h-40 w-full overflow-hidden bg-linen/40 ${prev ? 'cursor-pointer' : 'cursor-default'}`}
+                    >
+                      <CardPreview d={d} />
+                      <span className="pointer-events-none absolute left-2 top-2 flex gap-1">
+                        {d.arquivo ? <span className="rounded-full bg-olive/90 px-2 py-0.5 text-[11px] font-medium text-cream">Arquivo</span> : null}
+                        {d.categoria ? <span className="rounded-full bg-ink/75 px-2 py-0.5 text-[11px] font-medium text-cream">{d.categoria}</span> : null}
                       </span>
-                      <span className="mt-0.5 block text-sm text-ink/55">
-                        {[d.contraparte, d.data ? formatDate(d.data) : '', d.arquivo ? formatBytes(d.arquivo.tamanho) : '']
-                          .filter(Boolean)
-                          .join(' · ') || 'Sem detalhes'}
-                      </span>
-                    </span>
-                  </button>
-                  <div className="flex shrink-0 items-center gap-1">
-                    {prev ? (
-                      <button type="button" onClick={() => setPreviewDoc(d)} className="rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-cream transition-colors hover:bg-terracotta">
-                        Ver
-                      </button>
-                    ) : null}
-                    <button type="button" onClick={() => startEdit(d)} className="rounded-full px-2.5 py-1 text-xs font-medium text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink">
-                      Editar
                     </button>
-                    <button type="button" onClick={() => remove(d)} aria-label="Remover" className="rounded-full p-1.5 text-ink/40 transition-colors hover:bg-terracotta/10 hover:text-terracotta">
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              )
-            })
+                    <div className="truncate px-2.5 py-2 text-xs text-ink/50" title={meta}>
+                      {meta || 'Sem detalhes'}
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
           )}
-        </div>
+        </section>
       </div>
 
       {previewDoc && docPreview(previewDoc) ? (
