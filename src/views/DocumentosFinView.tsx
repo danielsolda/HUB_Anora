@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { ExternalLinkIcon, PlusIcon, RefreshIcon, TrashIcon } from '../lib/icons'
+import { FileTextIcon, PlusIcon, RefreshIcon, TrashIcon } from '../lib/icons'
+import { DocumentoModal } from '../components/DocumentoModal'
+import { resolveDoc } from '../lib/docpreview'
 import {
   createDocumento,
   deleteDocumento,
@@ -10,6 +12,27 @@ import {
   type DocumentoInput,
   type DocumentoTipo,
 } from '../lib/financeiro'
+
+/** Miniatura do documento (thumbnail do Drive/imagem), com fallback para ícone. */
+function Thumb({ url }: { url: string | null }) {
+  const [err, setErr] = useState(false)
+  if (!url || err) {
+    return (
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-linen text-mauve">
+        <FileTextIcon className="h-6 w-6" />
+      </span>
+    )
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      loading="lazy"
+      onError={() => setErr(true)}
+      className="h-14 w-14 shrink-0 rounded-lg border border-ink/10 bg-linen object-cover"
+    />
+  )
+}
 
 const LABELS: Record<DocumentoTipo, { title: string; nova: string; contraparte: string; tituloPh: string }> = {
   nota_fiscal: { title: 'Notas fiscais', nova: 'Nova nota', contraparte: 'Emitente / Fornecedor', tituloPh: 'Ex.: NF 1234' },
@@ -35,6 +58,7 @@ export function DocumentosFinView({ tipo }: { tipo: DocumentoTipo }) {
   const [form, setForm] = useState<DocumentoInput>(() => emptyForm(tipo))
   const [saving, setSaving] = useState(false)
   const [busca, setBusca] = useState('')
+  const [previewDoc, setPreviewDoc] = useState<Documento | null>(null)
 
   const L = LABELS[tipo]
 
@@ -166,36 +190,55 @@ export function DocumentosFinView({ tipo }: { tipo: DocumentoTipo }) {
               {list.length === 0 ? 'Nenhum documento ainda.' : 'Nada encontrado.'}
             </div>
           ) : (
-            filtered.map((d) => (
-              <div key={d.id} className="flex flex-wrap items-center gap-3 rounded-xl2 border border-ink/10 bg-cream p-4 shadow-card">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate font-semibold text-ink">{d.titulo || '—'}</span>
-                    {d.categoria ? <span className="rounded-full bg-linen px-2 py-0.5 text-xs font-medium text-mauve">{d.categoria}</span> : null}
+            filtered.map((d) => {
+              const prev = resolveDoc(d.link)
+              return (
+                <div key={d.id} className="flex flex-wrap items-center gap-3 rounded-xl2 border border-ink/10 bg-cream p-3 shadow-card">
+                  <button
+                    type="button"
+                    onClick={() => prev && setPreviewDoc(d)}
+                    disabled={!prev}
+                    title={prev ? 'Ver documento' : undefined}
+                    className={`group flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left ${prev ? 'cursor-pointer' : 'cursor-default'}`}
+                  >
+                    <Thumb url={prev?.thumbnail ?? null} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className={`truncate font-semibold text-ink ${prev ? 'group-hover:text-terracotta' : ''}`}>{d.titulo || '—'}</span>
+                        {d.categoria ? <span className="rounded-full bg-linen px-2 py-0.5 text-xs font-medium text-mauve">{d.categoria}</span> : null}
+                      </span>
+                      <span className="mt-0.5 block text-sm text-ink/55">
+                        {[d.contraparte, d.data ? formatDate(d.data) : ''].filter(Boolean).join(' · ') || 'Sem detalhes'}
+                      </span>
+                    </span>
+                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {prev ? (
+                      <button type="button" onClick={() => setPreviewDoc(d)} className="rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-cream transition-colors hover:bg-terracotta">
+                        Ver
+                      </button>
+                    ) : null}
+                    <button type="button" onClick={() => startEdit(d)} className="rounded-full px-2.5 py-1 text-xs font-medium text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink">
+                      Editar
+                    </button>
+                    <button type="button" onClick={() => remove(d)} aria-label="Remover" className="rounded-full p-1.5 text-ink/40 transition-colors hover:bg-terracotta/10 hover:text-terracotta">
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
                   </div>
-                  <p className="mt-0.5 text-sm text-ink/55">
-                    {[d.contraparte, d.data ? formatDate(d.data) : ''].filter(Boolean).join(' · ') || 'Sem detalhes'}
-                  </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  {d.link ? (
-                    <a href={d.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-cream transition-colors hover:bg-terracotta">
-                      Abrir
-                      <ExternalLinkIcon className="h-3.5 w-3.5" />
-                    </a>
-                  ) : null}
-                  <button type="button" onClick={() => startEdit(d)} className="rounded-full px-2.5 py-1 text-xs font-medium text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink">
-                    Editar
-                  </button>
-                  <button type="button" onClick={() => remove(d)} aria-label="Remover" className="rounded-full p-1.5 text-ink/40 transition-colors hover:bg-terracotta/10 hover:text-terracotta">
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))
+              )
+            })
           )}
         </div>
       </div>
+
+      {previewDoc && resolveDoc(previewDoc.link) ? (
+        <DocumentoModal
+          titulo={previewDoc.titulo || 'Documento'}
+          preview={resolveDoc(previewDoc.link)!}
+          onClose={() => setPreviewDoc(null)}
+        />
+      ) : null}
     </div>
   )
 }

@@ -402,6 +402,15 @@ export function BellIcon(props: IconProps) {
   )
 }
 
+export function DownloadIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3v11M8.5 10.5 12 14l3.5-3.5" />
+      <path d="M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15" />
+    </Icon>
+  )
+}
+
 /** Ícone da marca Google Sheets (cores fixas, não usa currentColor). */
 export function GoogleSheetsIcon(props: IconProps) {
   return (
