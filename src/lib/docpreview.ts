@@ -49,3 +49,22 @@ export function resolveDoc(link: string | null | undefined): DocPreview | null {
   }
   return { kind: 'other', thumbnail: null, embed: url, image: null, download: url, open: url }
 }
+
+/**
+ * DocPreview a partir de um arquivo enviado (URLs assinadas do próprio servidor).
+ * Como sabemos o MIME, classificamos com precisão: imagem → <img>; resto → iframe.
+ */
+export function previewFromArquivo(a: { mime: string; url: string; download: string }): DocPreview {
+  const mime = (a.mime || '').toLowerCase()
+  if (mime.startsWith('image/')) {
+    return { kind: 'image', thumbnail: a.url, embed: null, image: a.url, download: a.download, open: a.url }
+  }
+  return {
+    kind: mime.includes('pdf') ? 'pdf' : 'other',
+    thumbnail: null,
+    embed: a.url,
+    image: null,
+    download: a.download,
+    open: a.url,
+  }
+}

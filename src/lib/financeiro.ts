@@ -84,8 +84,18 @@ export async function fetchFluxo(): Promise<Fluxo> {
   return json<Fluxo>('/api/financeiro/fluxo')
 }
 
-// ── Documentos por link (notas fiscais, contratos, contábeis) ──
+// ── Documentos (notas fiscais, contratos, contábeis) ──
 export type DocumentoTipo = 'nota_fiscal' | 'contrato_fornecedor' | 'documento_contabil'
+
+/** Metadados de um arquivo enviado, com URLs assinadas (preview + download). */
+export type ArquivoMeta = {
+  id: number
+  nome: string
+  mime: string
+  tamanho: number
+  url: string
+  download: string
+}
 
 export type Documento = {
   id: number
@@ -96,6 +106,8 @@ export type Documento = {
   categoria: string
   contraparte: string
   observacoes: string
+  pasta_id: number | null
+  arquivo: ArquivoMeta | null
   created_at?: string
 }
 
@@ -107,6 +119,17 @@ export type DocumentoInput = {
   categoria?: string
   contraparte?: string
   observacoes?: string
+  pasta_id?: number | null
+  arquivo_id?: number | null
+}
+
+/** Pasta de documentos (árvore, por tipo). parent_id null = raiz. */
+export type Pasta = {
+  id: number
+  tipo: DocumentoTipo
+  nome: string
+  parent_id: number | null
+  created_at?: string
 }
 
 export async function listDocumentos(tipo: DocumentoTipo): Promise<Documento[]> {
@@ -123,6 +146,48 @@ export async function updateDocumento(id: number, patch: DocumentoInput): Promis
 
 export async function deleteDocumento(id: number): Promise<void> {
   await json(`/api/financeiro/documentos/${id}`, { method: 'DELETE' })
+}
+
+// ── Pastas ──
+export async function listPastas(tipo: DocumentoTipo): Promise<Pasta[]> {
+  return (await json<{ pastas: Pasta[] }>(`/api/financeiro/pastas?tipo=${tipo}`)).pastas
+}
+
+export async function createPasta(input: { tipo: DocumentoTipo; nome: string; parent_id: number | null }): Promise<Pasta> {
+  return (await json<{ pasta: Pasta }>('/api/financeiro/pastas', { method: 'POST', body: JSON.stringify(input) })).pasta
+}
+
+export async function renamePasta(id: number, nome: string): Promise<Pasta> {
+  return (await json<{ pasta: Pasta }>(`/api/financeiro/pastas/${id}`, { method: 'PATCH', body: JSON.stringify({ nome }) })).pasta
+}
+
+export async function deletePasta(id: number): Promise<void> {
+  const res = await apiFetch(`/api/financeiro/pastas/${id}`, { method: 'DELETE' })
+  if (res.status === 409) throw new Error('not_empty')
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+}
+
+// ── Upload de arquivo ──
+/** Envia os bytes crus do arquivo; devolve os metadados (com URLs assinadas). */
+export async function uploadArquivo(file: File): Promise<ArquivoMeta> {
+  const buf = await file.arrayBuffer()
+  const qs = `?nome=${encodeURIComponent(file.name)}&mime=${encodeURIComponent(file.type || 'application/octet-stream')}`
+  const res = await apiFetch(`/api/financeiro/arquivos${qs}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: buf,
+  })
+  if (!res.ok) throw new Error(`upload_failed_${res.status}`)
+  return (await res.json()).arquivo as ArquivoMeta
+}
+
+/** Tamanho legível: 1536 → "1,5 KB". */
+export function formatBytes(n: number): string {
+  if (!n) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)))
+  const v = n / Math.pow(1024, i)
+  return `${i ? v.toFixed(1).replace('.', ',') : v} ${units[i]}`
 }
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']

@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import { getPool } from './db.js'
+import { fileSignature } from './auth.js'
 
 /**
  * Lançamentos financeiros: contas a pagar e a receber (módulo Financeiro).
@@ -123,6 +124,29 @@ export async function initFinanceiro() {
     )
   `)
   await pool.query('CREATE INDEX IF NOT EXISTS idx_fin_doc_tipo ON financeiro_documentos (tipo, data)')
+  // Pasta (organização em árvore) e arquivo anexado (upload guardado no banco).
+  await pool.query('ALTER TABLE financeiro_documentos ADD COLUMN IF NOT EXISTS pasta_id integer')
+  await pool.query('ALTER TABLE financeiro_documentos ADD COLUMN IF NOT EXISTS arquivo_id integer')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS financeiro_pastas (
+      id         serial PRIMARY KEY,
+      tipo       text NOT NULL,
+      nome       text NOT NULL DEFAULT '',
+      parent_id  integer REFERENCES financeiro_pastas(id) ON DELETE CASCADE,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `)
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_fin_pasta_tipo ON financeiro_pastas (tipo, parent_id)')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS financeiro_arquivos (
+      id         serial PRIMARY KEY,
+      nome       text NOT NULL DEFAULT '',
+      mime       text NOT NULL DEFAULT 'application/octet-stream',
+      tamanho    integer NOT NULL DEFAULT 0,
+      conteudo   bytea NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `)
 }
 
 const SELECT = `
@@ -321,24 +345,81 @@ export async function getFluxo() {
   return { realizado: toSeries(realizado), previsto: toSeries(previsto) }
 }
 
-// ── Documentos por link (notas fiscais, contratos, contábeis) ──
-const DOC_FIELDS = ['tipo', 'titulo', 'link', 'data', 'categoria', 'contraparte', 'observacoes']
+// ── Documentos (notas fiscais, contratos, contábeis) ──
+// Cada documento pode apontar para um link externo OU para um arquivo enviado
+// (guardado em financeiro_arquivos) e ficar dentro de uma pasta (árvore).
+const DOC_TEXT_FIELDS = ['tipo', 'titulo', 'link', 'data', 'categoria', 'contraparte', 'observacoes']
+const DOC_INT_FIELDS = ['pasta_id', 'arquivo_id']
 const memDoc = new Map()
 let memDocSeq = 1
 
+function intOrNull(v) {
+  if (v === undefined || v === null || v === '') return null
+  const n = parseInt(v, 10)
+  return Number.isFinite(n) ? n : null
+}
+
 function sanitizeDoc(input, { partial } = {}) {
   const out = {}
-  for (const f of DOC_FIELDS) {
+  for (const f of DOC_TEXT_FIELDS) {
     if (partial && input[f] === undefined) continue
     out[f] = f === 'data' ? dateOrNull(input[f]) : clean(input[f])
+  }
+  for (const f of DOC_INT_FIELDS) {
+    if (partial && input[f] === undefined) continue
+    out[f] = intOrNull(input[f])
   }
   return out
 }
 
+const FILE_TTL_SECONDS = 12 * 3600
+
+/** Monta a URL assinada (inline + download) de um arquivo anexado. */
+function signedFileUrls(arquivoId) {
+  const exp = Math.floor(Date.now() / 1000) + FILE_TTL_SECONDS
+  const sig = fileSignature(arquivoId, exp)
+  const base = `/api/financeiro/arquivos/${arquivoId}?exp=${exp}&sig=${sig}`
+  return { url: base, download: `${base}&dl=1` }
+}
+
+/** Anexa o objeto `arquivo` (metadados + URLs) e normaliza pasta_id. */
+function shapeDoc(row) {
+  if (!row) return null
+  const { arquivo_nome, arquivo_mime, arquivo_tamanho, ...rest } = row
+  const pasta_id = rest.pasta_id ?? null
+  let arquivo = null
+  if (rest.arquivo_id) {
+    arquivo = {
+      id: rest.arquivo_id,
+      nome: arquivo_nome || '',
+      mime: arquivo_mime || 'application/octet-stream',
+      tamanho: arquivo_tamanho || 0,
+      ...signedFileUrls(rest.arquivo_id),
+    }
+  }
+  return { ...rest, pasta_id, arquivo }
+}
+
+/** Para o modo memória (sem banco): busca o arquivo no mapa e aplica shapeDoc. */
+function shapeMemDoc(d) {
+  const a = d.arquivo_id ? memArq.get(d.arquivo_id) : null
+  return shapeDoc({
+    ...d,
+    pasta_id: d.pasta_id ?? null,
+    arquivo_id: d.arquivo_id ?? null,
+    arquivo_nome: a?.nome,
+    arquivo_mime: a?.mime,
+    arquivo_tamanho: a?.tamanho,
+  })
+}
+
 const DOC_SELECT = `
-  SELECT id, tipo, titulo, link, to_char(data, 'YYYY-MM-DD') AS data,
-         categoria, contraparte, observacoes, created_at
-  FROM financeiro_documentos
+  SELECT d.id, d.tipo, d.titulo, d.link, to_char(d.data, 'YYYY-MM-DD') AS data,
+         d.categoria, d.contraparte, d.observacoes, d.pasta_id, d.arquivo_id,
+         a.nome AS arquivo_nome, a.mime AS arquivo_mime, a.tamanho AS arquivo_tamanho,
+         d.created_at
+  FROM financeiro_documentos d
+  LEFT JOIN financeiro_arquivos a ON a.id = d.arquivo_id
 `
 
 export async function listDocumentos(tipo) {
@@ -347,22 +428,26 @@ export async function listDocumentos(tipo) {
     return [...memDoc.values()]
       .filter((d) => !tipo || d.tipo === tipo)
       .sort((a, b) => (b.data || '').localeCompare(a.data || '') || b.id - a.id)
+      .map(shapeMemDoc)
   }
   const params = []
   let where = ''
   if (tipo) {
     params.push(tipo)
-    where = 'WHERE tipo = $1'
+    where = 'WHERE d.tipo = $1'
   }
-  const { rows } = await pool.query(`${DOC_SELECT} ${where} ORDER BY data DESC NULLS LAST, id DESC`, params)
-  return rows
+  const { rows } = await pool.query(`${DOC_SELECT} ${where} ORDER BY d.data DESC NULLS LAST, d.id DESC`, params)
+  return rows.map(shapeDoc)
 }
 
 export async function getDocumento(id) {
   const pool = getPool()
-  if (!pool) return memDoc.get(Number(id)) || null
-  const { rows } = await pool.query(`${DOC_SELECT} WHERE id = $1`, [id])
-  return rows[0] || null
+  if (!pool) {
+    const d = memDoc.get(Number(id))
+    return d ? shapeMemDoc(d) : null
+  }
+  const { rows } = await pool.query(`${DOC_SELECT} WHERE d.id = $1`, [id])
+  return shapeDoc(rows[0] || null)
 }
 
 export async function createDocumento(input) {
@@ -372,12 +457,15 @@ export async function createDocumento(input) {
   if (!pool) {
     const row = { id: memDocSeq++, ...data, created_at: new Date().toISOString() }
     memDoc.set(row.id, row)
-    return row
+    return shapeMemDoc(row)
   }
   const { rows } = await pool.query(
-    `INSERT INTO financeiro_documentos (tipo, titulo, link, data, categoria, contraparte, observacoes)
-     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-    [data.tipo, data.titulo || '', data.link || '', data.data ?? null, data.categoria || '', data.contraparte || '', data.observacoes || ''],
+    `INSERT INTO financeiro_documentos (tipo, titulo, link, data, categoria, contraparte, observacoes, pasta_id, arquivo_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+    [
+      data.tipo, data.titulo || '', data.link || '', data.data ?? null, data.categoria || '',
+      data.contraparte || '', data.observacoes || '', data.pasta_id ?? null, data.arquivo_id ?? null,
+    ],
   )
   return getDocumento(rows[0].id)
 }
@@ -390,8 +478,19 @@ export async function updateDocumento(id, input) {
   const pool = getPool()
   if (!pool) {
     const row = memDoc.get(Number(id))
-    if (row) Object.assign(row, data)
-    return row || null
+    if (row) {
+      const prevArquivo = row.arquivo_id
+      Object.assign(row, data)
+      if ('arquivo_id' in data && prevArquivo && prevArquivo !== row.arquivo_id) memArq.delete(prevArquivo)
+    }
+    return row ? shapeMemDoc(row) : null
+  }
+  // Se o arquivo anexado mudou, remove o antigo para não deixar lixo no banco.
+  let orphan = null
+  if ('arquivo_id' in data) {
+    const { rows: prev } = await pool.query('SELECT arquivo_id FROM financeiro_documentos WHERE id = $1', [id])
+    const prevId = prev[0]?.arquivo_id
+    if (prevId && prevId !== data.arquivo_id) orphan = prevId
   }
   const sets = keys.map((k, i) => `${k} = $${i + 1}`)
   const values = keys.map((k) => data[k])
@@ -400,14 +499,132 @@ export async function updateDocumento(id, input) {
     `UPDATE financeiro_documentos SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length}`,
     values,
   )
+  if (orphan) await deleteArquivo(orphan)
   return getDocumento(id)
 }
 
 export async function deleteDocumento(id) {
   const pool = getPool()
   if (!pool) {
+    const row = memDoc.get(Number(id))
+    if (row?.arquivo_id) memArq.delete(row.arquivo_id)
     memDoc.delete(Number(id))
     return
   }
+  const { rows } = await pool.query('SELECT arquivo_id FROM financeiro_documentos WHERE id = $1', [id])
   await pool.query('DELETE FROM financeiro_documentos WHERE id = $1', [id])
+  if (rows[0]?.arquivo_id) await deleteArquivo(rows[0].arquivo_id)
+}
+
+// ── Pastas (organização dos documentos em árvore) ──
+const memPasta = new Map()
+let memPastaSeq = 1
+const PASTA_SELECT = 'SELECT id, tipo, nome, parent_id, created_at FROM financeiro_pastas'
+
+export async function listPastas(tipo) {
+  const pool = getPool()
+  if (!pool) {
+    return [...memPasta.values()]
+      .filter((p) => !tipo || p.tipo === tipo)
+      .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+  }
+  const params = []
+  let where = ''
+  if (tipo) {
+    params.push(tipo)
+    where = 'WHERE tipo = $1'
+  }
+  const { rows } = await pool.query(`${PASTA_SELECT} ${where} ORDER BY nome ASC`, params)
+  return rows
+}
+
+export async function createPasta({ tipo, nome, parent_id }) {
+  const t = clean(tipo)
+  const n = clean(nome)
+  const pid = intOrNull(parent_id)
+  if (!t || !n) throw new Error('invalid_data')
+  const pool = getPool()
+  if (!pool) {
+    const row = { id: memPastaSeq++, tipo: t, nome: n, parent_id: pid, created_at: new Date().toISOString() }
+    memPasta.set(row.id, row)
+    return row
+  }
+  const { rows } = await pool.query(
+    `INSERT INTO financeiro_pastas (tipo, nome, parent_id) VALUES ($1,$2,$3)
+     RETURNING id, tipo, nome, parent_id, created_at`,
+    [t, n, pid],
+  )
+  return rows[0]
+}
+
+export async function renamePasta(id, nome) {
+  const n = clean(nome)
+  if (!n) throw new Error('invalid_data')
+  const pool = getPool()
+  if (!pool) {
+    const row = memPasta.get(Number(id))
+    if (row) row.nome = n
+    return row || null
+  }
+  const { rows } = await pool.query(
+    'UPDATE financeiro_pastas SET nome = $1 WHERE id = $2 RETURNING id, tipo, nome, parent_id, created_at',
+    [n, id],
+  )
+  return rows[0] || null
+}
+
+export async function deletePasta(id) {
+  const pool = getPool()
+  if (!pool) {
+    const nid = Number(id)
+    const hasChild = [...memPasta.values()].some((p) => p.parent_id === nid)
+    const hasDocs = [...memDoc.values()].some((d) => (d.pasta_id ?? null) === nid)
+    if (hasChild || hasDocs) throw new Error('not_empty')
+    memPasta.delete(nid)
+    return
+  }
+  const { rows: childP } = await pool.query('SELECT 1 FROM financeiro_pastas WHERE parent_id = $1 LIMIT 1', [id])
+  const { rows: childD } = await pool.query('SELECT 1 FROM financeiro_documentos WHERE pasta_id = $1 LIMIT 1', [id])
+  if (childP.length || childD.length) throw new Error('not_empty')
+  await pool.query('DELETE FROM financeiro_pastas WHERE id = $1', [id])
+}
+
+// ── Arquivos enviados (guardados como bytea no banco) ──
+const memArq = new Map()
+let memArqSeq = 1
+
+export async function createArquivo({ nome, mime, buffer }) {
+  const tamanho = buffer ? buffer.length : 0
+  const finalNome = clean(nome) || 'arquivo'
+  const finalMime = clean(mime) || 'application/octet-stream'
+  const pool = getPool()
+  if (!pool) {
+    const row = { id: memArqSeq++, nome: finalNome, mime: finalMime, tamanho, conteudo: buffer }
+    memArq.set(row.id, row)
+    return { id: row.id, nome: finalNome, mime: finalMime, tamanho }
+  }
+  const { rows } = await pool.query(
+    'INSERT INTO financeiro_arquivos (nome, mime, tamanho, conteudo) VALUES ($1,$2,$3,$4) RETURNING id',
+    [finalNome, finalMime, tamanho, buffer],
+  )
+  return { id: rows[0].id, nome: finalNome, mime: finalMime, tamanho }
+}
+
+export async function getArquivo(id) {
+  const pool = getPool()
+  if (!pool) return memArq.get(Number(id)) || null
+  const { rows } = await pool.query(
+    'SELECT id, nome, mime, tamanho, conteudo FROM financeiro_arquivos WHERE id = $1',
+    [id],
+  )
+  return rows[0] || null
+}
+
+export async function deleteArquivo(id) {
+  const pool = getPool()
+  if (!pool) {
+    memArq.delete(Number(id))
+    return
+  }
+  await pool.query('DELETE FROM financeiro_arquivos WHERE id = $1', [id])
 }

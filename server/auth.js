@@ -42,6 +42,23 @@ export function randomPassword(length = 12) {
   return crypto.randomBytes(length).toString('base64url').slice(0, length)
 }
 
+/**
+ * Assinatura HMAC de curta duração para servir arquivos sem exigir o header
+ * Authorization — necessário porque <img>/<iframe> não enviam token. A URL leva
+ * `exp` (validade) e `sig`; o servidor recalcula e compara. Escopo por arquivo.
+ */
+export function fileSignature(id, exp) {
+  return crypto.createHmac('sha256', JWT_SECRET).update(`${id}.${exp}`).digest('hex')
+}
+
+export function verifyFileSignature(id, exp, sig) {
+  const expNum = Number(exp)
+  if (!Number.isFinite(expNum) || expNum * 1000 < Date.now()) return false
+  const expected = Buffer.from(fileSignature(id, exp))
+  const got = Buffer.from(String(sig || ''))
+  return expected.length === got.length && crypto.timingSafeEqual(expected, got)
+}
+
 /** Exige um token válido; popula req.user. */
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization || ''

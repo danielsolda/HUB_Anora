@@ -39,6 +39,12 @@ import {
   createDocumento,
   updateDocumento,
   deleteDocumento,
+  listPastas,
+  createPasta,
+  renamePasta,
+  deletePasta,
+  createArquivo,
+  getArquivo,
 } from './financeiro.js'
 import {
   initStages,
@@ -62,7 +68,7 @@ import {
   countOwners,
   ROLES,
 } from './users.js'
-import { verifyPassword, signToken, requireAuth, requireRole, randomPassword } from './auth.js'
+import { verifyPassword, signToken, requireAuth, requireRole, randomPassword, verifyFileSignature } from './auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.resolve(__dirname, '../dist')
@@ -466,6 +472,88 @@ app.delete('/api/financeiro/documentos/:id', authFresh, finRole, async (req, res
   if (!d) return res.status(404).json({ error: 'not_found' })
   await deleteDocumento(req.params.id)
   res.json({ ok: true })
+})
+
+// ── Pastas de documentos financeiros ──
+app.get('/api/financeiro/pastas', authFresh, finRole, async (req, res) => {
+  try {
+    res.json({ pastas: await listPastas(req.query.tipo) })
+  } catch (error) {
+    console.error('[api] erro ao listar pastas:', error)
+    res.status(500).json({ error: 'list_failed' })
+  }
+})
+
+app.post('/api/financeiro/pastas', authFresh, finRole, async (req, res) => {
+  try {
+    res.json({ pasta: await createPasta(req.body || {}) })
+  } catch (error) {
+    res.status(400).json({ error: 'create_failed' })
+  }
+})
+
+app.patch('/api/financeiro/pastas/:id', authFresh, finRole, async (req, res) => {
+  try {
+    const pasta = await renamePasta(req.params.id, req.body?.nome)
+    if (!pasta) return res.status(404).json({ error: 'not_found' })
+    res.json({ pasta })
+  } catch (error) {
+    res.status(400).json({ error: 'update_failed' })
+  }
+})
+
+app.delete('/api/financeiro/pastas/:id', authFresh, finRole, async (req, res) => {
+  try {
+    await deletePasta(req.params.id)
+    res.json({ ok: true })
+  } catch (error) {
+    if (String(error?.message) === 'not_empty') return res.status(409).json({ error: 'not_empty' })
+    console.error('[api] erro ao remover pasta:', error)
+    res.status(500).json({ error: 'delete_failed' })
+  }
+})
+
+// ── Upload de arquivo (bytes crus → guardado no banco) ──
+app.post(
+  '/api/financeiro/arquivos',
+  authFresh,
+  finRole,
+  express.raw({ type: () => true, limit: '25mb' }),
+  async (req, res) => {
+    try {
+      const buffer = Buffer.isBuffer(req.body) ? req.body : null
+      if (!buffer || buffer.length === 0) return res.status(400).json({ error: 'empty_file' })
+      const arquivo = await createArquivo({
+        nome: String(req.query.nome || 'arquivo'),
+        mime: String(req.query.mime || 'application/octet-stream'),
+        buffer,
+      })
+      res.json({ arquivo })
+    } catch (error) {
+      console.error('[api] erro no upload:', error)
+      res.status(500).json({ error: 'upload_failed' })
+    }
+  },
+)
+
+// Servir o arquivo com URL assinada (sem Bearer, para <img>/<iframe>). ?dl=1 baixa.
+app.get('/api/financeiro/arquivos/:id', async (req, res) => {
+  const { id } = req.params
+  if (!verifyFileSignature(id, req.query.exp, req.query.sig)) return res.status(403).send('forbidden')
+  try {
+    const arquivo = await getArquivo(id)
+    if (!arquivo || !arquivo.conteudo) return res.status(404).send('not found')
+    const safe = String(arquivo.nome || 'arquivo').replace(/[\r\n"\\]/g, '_')
+    res.setHeader('Content-Type', arquivo.mime || 'application/octet-stream')
+    res.setHeader('Content-Length', arquivo.conteudo.length)
+    res.setHeader('Content-Disposition', `${req.query.dl ? 'attachment' : 'inline'}; filename="${safe}"`)
+    res.setHeader('Cache-Control', 'private, max-age=3600')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.send(arquivo.conteudo)
+  } catch (error) {
+    console.error('[api] erro ao servir arquivo:', error)
+    res.status(500).send('error')
+  }
 })
 
 // ── Frontend estático (produção) ──
