@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronRightIcon,
+  ExternalLinkIcon,
   FileTextIcon,
   FolderIcon,
   FolderPlusIcon,
@@ -74,6 +75,14 @@ function Kebab({ items }: { items: { label: string; onClick: () => void; danger?
   )
 }
 
+function hostOf(u: string): string {
+  try {
+    return new URL(u).hostname.replace(/^www\./, '')
+  } catch {
+    return ''
+  }
+}
+
 /** Miniatura grande do documento no card: imagem/thumbnail → iframe → ícone. */
 function CardPreview({ d }: { d: Documento }) {
   const prev = docPreview(d)
@@ -108,10 +117,12 @@ function CardPreview({ d }: { d: Documento }) {
       />
     )
   }
+  // Link externo sem miniatura (site genérico): mostra o domínio, não um "erro".
+  const host = hostOf(prev.open)
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-mauve">
-      <FileTextIcon className="h-9 w-9" />
-      <span className="text-xs text-ink/40">Prévia indisponível</span>
+    <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 px-3 text-mauve">
+      <ExternalLinkIcon className="h-8 w-8" />
+      <span className="max-w-full truncate text-center text-xs text-ink/45">{host || 'Abrir link'}</span>
     </div>
   )
 }

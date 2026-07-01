@@ -19,23 +19,51 @@ export type DocPreview = {
   open: string
 }
 
-function driveId(url: string): string | null {
-  const m = url.match(/\/d\/([-\w]{10,})/) || url.match(/[?&]id=([-\w]{10,})/)
-  return m ? m[1] : null
+/**
+ * Reconhece um arquivo do Google — Drive (arquivo), Docs, Planilhas ou Slides —
+ * e devolve as URLs de embutir e baixar. O endpoint de thumbnail do Drive
+ * (`drive.google.com/thumbnail?id=…`) funciona para todos eles, desde que o
+ * arquivo esteja compartilhado como "qualquer pessoa com o link".
+ */
+function googleFile(url: string): { id: string; embed: string; download: string } | null {
+  // Google Docs / Planilhas / Apresentações
+  const docs = url.match(/docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([-\w]{10,})/)
+  if (docs) {
+    const kind = docs[1]
+    const id = docs[2]
+    return {
+      id,
+      embed: `https://docs.google.com/${kind}/d/${id}/preview`,
+      download: `https://docs.google.com/${kind}/d/${id}/export?format=pdf`,
+    }
+  }
+  // Google Drive (arquivo): /file/d/ID, /d/ID, open?id=ID, uc?id=ID
+  if (/drive\.google\.com/.test(url) && !/\/drive\/folders\//.test(url)) {
+    const m = url.match(/\/d\/([-\w]{10,})/) || url.match(/[?&]id=([-\w]{10,})/)
+    if (m) {
+      const id = m[1]
+      return {
+        id,
+        embed: `https://drive.google.com/file/d/${id}/preview`,
+        download: `https://drive.google.com/uc?export=download&id=${id}`,
+      }
+    }
+  }
+  return null
 }
 
 export function resolveDoc(link: string | null | undefined): DocPreview | null {
   const url = (link || '').trim()
   if (!/^https?:\/\//i.test(url)) return null
 
-  const id = /drive\.google\.com/.test(url) ? driveId(url) : null
-  if (id) {
+  const g = googleFile(url)
+  if (g) {
     return {
       kind: 'drive',
-      thumbnail: `https://drive.google.com/thumbnail?id=${id}&sz=w800`,
-      embed: `https://drive.google.com/file/d/${id}/preview`,
+      thumbnail: `https://drive.google.com/thumbnail?id=${g.id}&sz=w1000`,
+      embed: g.embed,
       image: null,
-      download: `https://drive.google.com/uc?export=download&id=${id}`,
+      download: g.download,
       open: url,
     }
   }
