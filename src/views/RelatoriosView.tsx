@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { RefreshIcon } from '../lib/icons'
-import { formatBRL, listAllLancamentos, type Lancamento } from '../lib/financeiro'
+import { DownloadIcon, RefreshIcon } from '../lib/icons'
+import { downloadCsv, effectiveStatus, formatBRL, listAllLancamentos, type Lancamento } from '../lib/financeiro'
 
 type Modo = 'previsto' | 'realizado'
+
+const STATUS_LABEL: Record<string, string> = {
+  pendente: 'Pendente',
+  pago: 'Pago/Recebido',
+  cancelado: 'Cancelado',
+  vencido: 'Vencido',
+}
 
 /** Data de competência de um lançamento conforme o modo. */
 function dateOf(l: Lancamento, modo: Modo): string | null {
@@ -109,6 +116,27 @@ export function RelatoriosView() {
     { label: 'Saldo', value: saldo, tone: saldo >= 0 ? 'text-olive' : 'text-terracotta' },
   ]
 
+  function exportar() {
+    const rows = filtered
+      .slice()
+      .sort((a, b) => (dateOf(a, modo) || '').localeCompare(dateOf(b, modo) || ''))
+      .map((l) => ({
+        Tipo: l.tipo === 'pagar' ? 'Despesa' : 'Receita',
+        Descrição: l.descricao,
+        Categoria: l.categoria,
+        Contraparte: l.contraparte,
+        'Valor (R$)': l.valor,
+        Vencimento: l.vencimento || '',
+        'Pago/Recebido em': l.pago_em || '',
+        Situação: STATUS_LABEL[effectiveStatus(l)] || l.status,
+        Forma: l.forma,
+        Parcela: l.parcela != null && l.parcelas_total ? `${l.parcela}/${l.parcelas_total}` : '',
+        Observações: l.observacoes,
+      }))
+    const sufixo = ano === 'todos' ? 'todos-os-anos' : ano
+    downloadCsv(`relatorio-financeiro-${modo}-${sufixo}.csv`, rows)
+  }
+
   const selectCls = 'rounded-full border border-ink/15 bg-cream px-3 py-1.5 text-sm font-medium text-ink/80 outline-none transition-colors hover:border-terracotta/40'
 
   return (
@@ -136,6 +164,10 @@ export function RelatoriosView() {
                 </option>
               ))}
             </select>
+            <button type="button" onClick={exportar} disabled={filtered.length === 0} className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-medium text-cream transition-colors hover:bg-terracotta disabled:opacity-40" title="Baixar em Excel/CSV">
+              <DownloadIcon className="h-4 w-4" />
+              Exportar
+            </button>
             <button type="button" onClick={load} aria-label="Atualizar" className="inline-flex items-center rounded-full border border-ink/15 bg-cream px-3 py-2 text-sm font-medium text-ink/70 transition-colors hover:border-terracotta/40 hover:text-ink">
               <RefreshIcon className={`h-4 w-4 ${status === 'loading' ? 'animate-spin' : ''}`} />
             </button>
