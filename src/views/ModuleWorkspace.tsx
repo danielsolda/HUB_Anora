@@ -3,6 +3,7 @@ import { DashboardEmbed } from '../components/DashboardEmbed'
 import { AuditoriaView } from './AuditoriaView'
 import { VideosView } from './VideosView'
 import { ColaboradoresView } from './ColaboradoresView'
+import { RhRegistrosView } from './RhRegistrosView'
 import { FinanceiroView } from './FinanceiroView'
 import { FluxoCaixaView } from './FluxoCaixaView'
 import { RelatoriosView } from './RelatoriosView'
@@ -34,6 +35,7 @@ function SubmoduleContent({ submodule }: { submodule: Submodule }) {
   if (c.kind === 'auditoria') return <AuditoriaView />
   if (c.kind === 'contratacao') return <KanbanBoard />
   if (c.kind === 'colaboradores') return <ColaboradoresView />
+  if (c.kind === 'rh-registros') return <RhRegistrosView variant={c.variant} />
   if (c.kind === 'financeiro') return <FinanceiroView tipo={c.tipo} />
   if (c.kind === 'fluxo') return <FluxoCaixaView />
   if (c.kind === 'relatorios') return <RelatoriosView />

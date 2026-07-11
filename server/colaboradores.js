@@ -284,6 +284,40 @@ export async function listRegistros(colaboradorId, tipo) {
   return rows
 }
 
+/**
+ * Registros de vários colaboradores de uma vez, por tipo(s) — para as visões
+ * macro de RH (Treinamentos, Medidas disciplinares). Junta nome/cargo/setor.
+ */
+export async function listAllRegistros(tipos) {
+  const arr = (Array.isArray(tipos) ? tipos : String(tipos || '').split(','))
+    .map((t) => t.trim())
+    .filter(Boolean)
+  if (arr.length === 0) return []
+  const pool = getPool()
+  if (!pool) {
+    return [...memReg.values()]
+      .filter((r) => arr.includes(r.tipo))
+      .map((r) => {
+        const c = mem.get(r.colaborador_id)
+        return { ...r, colaborador_nome: c?.nome || '', colaborador_cargo: c?.cargo || '', colaborador_setor: c?.setor || '' }
+      })
+      .sort((a, b) => (b.data || '').localeCompare(a.data || '') || b.id - a.id)
+  }
+  const { rows } = await pool.query(
+    `SELECT r.id, r.colaborador_id, r.tipo,
+            to_char(r.data, 'YYYY-MM-DD') AS data,
+            to_char(r.data_fim, 'YYYY-MM-DD') AS data_fim,
+            r.dias, r.categoria, r.titulo, r.descricao, r.link, r.created_at,
+            c.nome AS colaborador_nome, c.cargo AS colaborador_cargo, c.setor AS colaborador_setor
+     FROM colaborador_registros r
+     JOIN colaboradores c ON c.id = r.colaborador_id
+     WHERE r.tipo = ANY($1)
+     ORDER BY r.data DESC NULLS LAST, r.id DESC`,
+    [arr],
+  )
+  return rows
+}
+
 export async function createRegistro(colaboradorId, input) {
   const cid = Number(colaboradorId)
   const data = sanitizeRegistro(input)

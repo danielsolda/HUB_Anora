@@ -43,6 +43,7 @@ export type SubmoduleContent =
   | { kind: 'auditoria' }
   | { kind: 'contratacao' }
   | { kind: 'colaboradores' }
+  | { kind: 'rh-registros'; variant: 'treinamentos' | 'medidas' }
   | { kind: 'financeiro'; tipo: 'pagar' | 'receber' }
   | { kind: 'fluxo' }
   | { kind: 'relatorios' }
@@ -137,8 +138,22 @@ export const modules: Module[] = [
         content: { kind: 'contratacao' },
       },
       soon('avaliacoes-desempenho', 'Avaliação de desempenho', AwardIcon, 'Avaliações por função, com notas e gráfico de competências.'),
-      soon('treinamentos', 'Treinamentos e certificações', TrophyIcon, 'Histórico, certificados e materiais de treinamento da equipe.'),
-      soon('medidas', 'Medidas disciplinares', ScaleIcon, 'Advertências, suspensões e notificações da equipe.'),
+      {
+        id: 'treinamentos',
+        label: 'Treinamentos e certificações',
+        description: 'Histórico, certificados e materiais de treinamento da equipe.',
+        icon: TrophyIcon,
+        status: 'ativo',
+        content: { kind: 'rh-registros', variant: 'treinamentos' },
+      },
+      {
+        id: 'medidas',
+        label: 'Medidas disciplinares',
+        description: 'Advertências, suspensões, notificações e demissões da equipe.',
+        icon: ScaleIcon,
+        status: 'ativo',
+        content: { kind: 'rh-registros', variant: 'medidas' },
+      },
     ],
   },
   {

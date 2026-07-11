@@ -99,6 +99,20 @@ export async function listRegistros(colaboradorId: number, tipo: string): Promis
   ).registros
 }
 
+/** Registro com os dados da pessoa (visões macro de RH). */
+export type RegistroComPessoa = Registro & {
+  colaborador_nome: string
+  colaborador_cargo: string
+  colaborador_setor: string
+}
+
+/** Todos os registros dos tipos informados, de todos os colaboradores. */
+export async function listAllRegistros(tipos: string[]): Promise<RegistroComPessoa[]> {
+  return (
+    await json<{ registros: RegistroComPessoa[] }>(`/api/rh/registros?tipos=${encodeURIComponent(tipos.join(','))}`)
+  ).registros
+}
+
 export async function createRegistro(colaboradorId: number, input: RegistroInput): Promise<Registro> {
   return (
     await json<{ registro: Registro }>(`/api/colaboradores/${colaboradorId}/registros`, {

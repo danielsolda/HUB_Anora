@@ -23,6 +23,7 @@ import {
   ensureColaboradorForUser,
   backfillColaboradoresFromUsers,
   listRegistros,
+  listAllRegistros,
   getRegistro,
   createRegistro,
   updateRegistro,
@@ -353,6 +354,16 @@ app.delete('/api/colaboradores/:id', authFresh, rhRole, async (req, res) => {
 })
 
 // Registros da ficha (advertências, suspensões, férias, avaliações…)
+// Visão macro (todos os colaboradores) por tipo(s) — RH Treinamentos/Medidas.
+app.get('/api/rh/registros', authFresh, rhRole, async (req, res) => {
+  try {
+    res.json({ registros: await listAllRegistros(req.query.tipos) })
+  } catch (error) {
+    console.error('[api] erro ao listar registros (macro):', error)
+    res.status(500).json({ error: 'list_failed' })
+  }
+})
+
 app.get('/api/colaboradores/:id/registros', authFresh, rhRole, async (req, res) => {
   try {
     res.json({ registros: await listRegistros(req.params.id, req.query.tipo) })
