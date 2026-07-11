@@ -20,6 +20,8 @@ import {
   createColaborador,
   updateColaborador,
   deleteColaborador,
+  ensureColaboradorForUser,
+  backfillColaboradoresFromUsers,
   listRegistros,
   getRegistro,
   createRegistro,
@@ -157,6 +159,12 @@ app.post('/api/users', authFresh, requireRole('admin'), async (req, res) => {
     role,
     password: finalPassword,
   })
+  // Cria a ficha de RH automaticamente (não bloqueia a criação do usuário).
+  try {
+    await ensureColaboradorForUser(user)
+  } catch (error) {
+    console.error('[api] falha ao criar ficha do colaborador:', error)
+  }
   res.json({ user, generatedPassword: generated ? finalPassword : undefined })
 })
 
@@ -569,6 +577,8 @@ initDb()
   .then(() => initStages())
   .then(() => initColaboradores())
   .then(() => initFinanceiro())
+  // Garante uma ficha de RH para cada usuário já existente (exceto Administrador).
+  .then(async () => backfillColaboradoresFromUsers(await listUsers()))
   .catch((error) => {
     console.error('[boot] falha ao inicializar banco/usuários/etapas:', error)
   })

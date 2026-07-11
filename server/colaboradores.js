@@ -1,10 +1,13 @@
 import { getPool } from './db.js'
+import { roleLabel, ADMIN_ROLE } from './users.js'
 
 /**
  * Cadastro de colaboradores (RH & Desenvolvimento).
  * Usa PostgreSQL quando disponível; senão, memória (dev/sem banco).
  * As demais áreas da ficha (contrato, holerites, advertências, férias, etc.)
  * serão ligadas uma a uma; aqui ficam os dados centrais de cada pessoa.
+ * Cada usuário do sistema (exceto Administrador) tem uma ficha ligada por
+ * `user_id`, criada automaticamente quando o usuário é cadastrado.
  */
 
 export const STATUSES = new Set(['experiencia', 'ativo', 'desligado'])
@@ -57,6 +60,11 @@ export async function initColaboradores() {
       updated_at   timestamptz NOT NULL DEFAULT now()
     )
   `)
+  // Liga a ficha ao usuário do sistema (quando houver login). Um usuário → uma ficha.
+  await pool.query('ALTER TABLE colaboradores ADD COLUMN IF NOT EXISTS user_id integer')
+  await pool.query(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_colab_user ON colaboradores (user_id) WHERE user_id IS NOT NULL',
+  )
   // Registros da ficha (advertências, suspensões, férias, avaliações, …),
   // genéricos por "tipo" para crescer sem novas tabelas.
   await pool.query(`
@@ -85,7 +93,7 @@ export async function initColaboradores() {
 const SELECT = `
   SELECT id, nome, cargo, setor, email, telefone,
          to_char(admissao, 'YYYY-MM-DD') AS admissao,
-         status, observacoes, created_at
+         status, observacoes, user_id, created_at
   FROM colaboradores
 `
 
@@ -153,6 +161,81 @@ export async function deleteColaborador(id) {
     return
   }
   await pool.query('DELETE FROM colaboradores WHERE id = $1', [id])
+}
+
+/**
+ * Garante que exista uma ficha de colaborador ligada ao usuário (idempotente):
+ * já existe pelo user_id → devolve; existe ficha "solta" com o mesmo e-mail →
+ * liga; senão → cria uma nova. Administradores (sócios) não geram ficha.
+ * Devolve a ficha, ou null quando pulado.
+ */
+export async function ensureColaboradorForUser(user) {
+  if (!user || user.role === ADMIN_ROLE) return null
+  const uid = Number(user.id)
+  if (!Number.isFinite(uid)) return null
+  const nome = clean(user.name) || clean(user.email) || 'Sem nome'
+  const email = clean(user.email)
+  const cargo = roleLabel(user.role)
+
+  const pool = getPool()
+  if (!pool) {
+    let existing = [...mem.values()].find((c) => Number(c.user_id) === uid)
+    if (existing) return existing
+    if (email) {
+      existing = [...mem.values()].find(
+        (c) => !c.user_id && (c.email || '').toLowerCase() === email.toLowerCase(),
+      )
+      if (existing) {
+        existing.user_id = uid
+        return existing
+      }
+    }
+    const row = {
+      id: memSeq++,
+      nome,
+      cargo,
+      setor: '',
+      email,
+      telefone: '',
+      admissao: null,
+      status: 'ativo',
+      observacoes: '',
+      user_id: uid,
+      created_at: new Date().toISOString(),
+    }
+    mem.set(row.id, row)
+    return row
+  }
+
+  const { rows: byUser } = await pool.query('SELECT id FROM colaboradores WHERE user_id = $1', [uid])
+  if (byUser[0]) return getColaborador(byUser[0].id)
+  if (email) {
+    const { rows: byEmail } = await pool.query(
+      'SELECT id FROM colaboradores WHERE lower(email) = lower($1) AND user_id IS NULL LIMIT 1',
+      [email],
+    )
+    if (byEmail[0]) {
+      await pool.query('UPDATE colaboradores SET user_id = $1, updated_at = now() WHERE id = $2', [uid, byEmail[0].id])
+      return getColaborador(byEmail[0].id)
+    }
+  }
+  const { rows } = await pool.query(
+    `INSERT INTO colaboradores (nome, cargo, setor, email, telefone, admissao, status, observacoes, user_id)
+     VALUES ($1,$2,'',$3,'',NULL,'ativo','',$4) RETURNING id`,
+    [nome, cargo, email, uid],
+  )
+  return getColaborador(rows[0].id)
+}
+
+/** Cria/liga a ficha de todos os usuários informados (backfill no boot). */
+export async function backfillColaboradoresFromUsers(users) {
+  for (const u of users || []) {
+    try {
+      await ensureColaboradorForUser(u)
+    } catch (error) {
+      console.error('[colaboradores] falha ao sincronizar ficha do usuário', u?.id, error)
+    }
+  }
 }
 
 // ── Registros da ficha (advertências, suspensões, férias, avaliações, …) ──

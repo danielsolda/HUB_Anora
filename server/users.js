@@ -21,6 +21,24 @@ export const ROLES = new Set([
   'estoque',
 ])
 
+// Rótulo legível de cada função (usado como cargo padrão da ficha de RH).
+export const ROLE_LABELS = {
+  admin: 'Administrador',
+  gerente_comercial: 'Gerente Comercial',
+  gerente_operacoes: 'Gerente de Operações',
+  financeiro: 'Financeiro',
+  contabilidade: 'Contabilidade',
+  juridico: 'Jurídico',
+  biomedica: 'Biomédica',
+  assistente_comercial: 'Assistente Comercial',
+  recepcionista: 'Recepcionista',
+  estoque: 'Estoque',
+}
+
+export function roleLabel(role) {
+  return ROLE_LABELS[role] || role || ''
+}
+
 // Papéis antigos → novos (migração automática no boot).
 const LEGACY_ROLE_MAP = {
   dono: 'admin',
