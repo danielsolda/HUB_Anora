@@ -43,6 +43,7 @@ export type SubmoduleContent =
   | { kind: 'auditoria' }
   | { kind: 'contratacao' }
   | { kind: 'colaboradores' }
+  | { kind: 'avaliacoes' }
   | { kind: 'rh-registros'; variant: 'treinamentos' | 'medidas' }
   | { kind: 'financeiro'; tipo: 'pagar' | 'receber' }
   | { kind: 'fluxo' }
@@ -137,7 +138,14 @@ export const modules: Module[] = [
         status: 'ativo',
         content: { kind: 'contratacao' },
       },
-      soon('avaliacoes-desempenho', 'Avaliação de desempenho', AwardIcon, 'Avaliações por função, com notas e gráfico de competências.'),
+      {
+        id: 'avaliacoes-desempenho',
+        label: 'Avaliação de desempenho',
+        description: 'Avaliações por função, com notas e gráfico de competências.',
+        icon: AwardIcon,
+        status: 'ativo',
+        content: { kind: 'avaliacoes' },
+      },
       {
         id: 'treinamentos',
         label: 'Treinamentos e certificações',

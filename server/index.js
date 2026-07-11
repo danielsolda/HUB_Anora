@@ -30,6 +30,15 @@ import {
   deleteRegistro,
 } from './colaboradores.js'
 import {
+  initAvaliacoes,
+  listAvaliacoes,
+  listAvaliacoesByColaborador,
+  getAvaliacao,
+  createAvaliacao,
+  updateAvaliacao,
+  deleteAvaliacao,
+} from './avaliacoes.js'
+import {
   initFinanceiro,
   listLancamentos,
   getLancamento,
@@ -364,6 +373,52 @@ app.get('/api/rh/registros', authFresh, rhRole, async (req, res) => {
   }
 })
 
+// ── Avaliações de desempenho ──
+app.get('/api/rh/avaliacoes', authFresh, rhRole, async (_req, res) => {
+  try {
+    res.json({ avaliacoes: await listAvaliacoes() })
+  } catch (error) {
+    console.error('[api] erro ao listar avaliações:', error)
+    res.status(500).json({ error: 'list_failed' })
+  }
+})
+
+app.get('/api/colaboradores/:id/avaliacoes', authFresh, rhRole, async (req, res) => {
+  try {
+    res.json({ avaliacoes: await listAvaliacoesByColaborador(req.params.id) })
+  } catch (error) {
+    res.status(500).json({ error: 'list_failed' })
+  }
+})
+
+app.post('/api/colaboradores/:id/avaliacoes', authFresh, rhRole, async (req, res) => {
+  const c = await getColaborador(req.params.id)
+  if (!c) return res.status(404).json({ error: 'not_found' })
+  try {
+    res.json({ avaliacao: await createAvaliacao(req.params.id, req.body || {}) })
+  } catch (error) {
+    console.error('[api] erro ao criar avaliação:', error)
+    res.status(500).json({ error: 'create_failed' })
+  }
+})
+
+app.patch('/api/colaboradores/:id/avaliacoes/:aid', authFresh, rhRole, async (req, res) => {
+  const a = await getAvaliacao(req.params.aid)
+  if (!a) return res.status(404).json({ error: 'not_found' })
+  try {
+    res.json({ avaliacao: await updateAvaliacao(req.params.aid, req.body || {}) })
+  } catch (error) {
+    res.status(500).json({ error: 'update_failed' })
+  }
+})
+
+app.delete('/api/colaboradores/:id/avaliacoes/:aid', authFresh, rhRole, async (req, res) => {
+  const a = await getAvaliacao(req.params.aid)
+  if (!a) return res.status(404).json({ error: 'not_found' })
+  await deleteAvaliacao(req.params.aid)
+  res.json({ ok: true })
+})
+
 app.get('/api/colaboradores/:id/registros', authFresh, rhRole, async (req, res) => {
   try {
     res.json({ registros: await listRegistros(req.params.id, req.query.tipo) })
@@ -587,6 +642,7 @@ initDb()
   .then(() => initUsers())
   .then(() => initStages())
   .then(() => initColaboradores())
+  .then(() => initAvaliacoes())
   .then(() => initFinanceiro())
   // Garante uma ficha de RH para cada usuário já existente (exceto Administrador).
   .then(async () => backfillColaboradoresFromUsers(await listUsers()))
