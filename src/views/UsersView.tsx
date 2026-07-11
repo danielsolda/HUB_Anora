@@ -17,7 +17,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   email_taken: 'Já existe um usuário com esse e-mail.',
   last_owner: 'Não é possível: precisa haver ao menos um Administrador ativo.',
   cannot_delete_self: 'Você não pode remover o próprio usuário.',
-  invalid_data: 'Preencha e-mail e papel corretamente.',
+  invalid_data: 'Preencha e-mail e função corretamente.',
 }
 
 function messageFor(err: unknown): string {
@@ -179,7 +179,7 @@ export function UsersView() {
             />
           </label>
           <label className="text-sm font-medium text-ink/70">
-            Papel
+            Função
             <select
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
@@ -217,7 +217,7 @@ export function UsersView() {
       <div className="mt-8 overflow-hidden rounded-xl2 border border-ink/10">
         <div className="hidden grid-cols-[1.5fr_1fr_auto] gap-4 border-b border-ink/10 bg-cream/60 px-5 py-3 text-xs uppercase tracking-wide text-ink/45 sm:grid">
           <span>Usuário</span>
-          <span>Papel</span>
+          <span>Função</span>
           <span className="text-right">Ações</span>
         </div>
 

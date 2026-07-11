@@ -383,7 +383,7 @@ app.delete('/api/colaboradores/:id/registros/:rid', authFresh, rhRole, async (re
 })
 
 // ── Financeiro: contas a pagar e a receber ──
-const finRole = requireRole('admin', 'financeiro')
+const finRole = requireRole('admin', 'financeiro', 'contabilidade')
 
 app.get('/api/financeiro/lancamentos', authFresh, finRole, async (req, res) => {
   try {

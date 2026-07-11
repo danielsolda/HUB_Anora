@@ -11,9 +11,12 @@ export type Role =
   | 'gerente_comercial'
   | 'gerente_operacoes'
   | 'financeiro'
+  | 'contabilidade'
+  | 'juridico'
   | 'biomedica'
   | 'assistente_comercial'
   | 'recepcionista'
+  | 'estoque'
 
 export type User = {
   id: number

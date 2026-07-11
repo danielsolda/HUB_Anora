@@ -13,9 +13,12 @@ export const ROLES = new Set([
   'gerente_comercial',
   'gerente_operacoes',
   'financeiro',
+  'contabilidade',
+  'juridico',
   'biomedica',
   'assistente_comercial',
   'recepcionista',
+  'estoque',
 ])
 
 // Papéis antigos → novos (migração automática no boot).
